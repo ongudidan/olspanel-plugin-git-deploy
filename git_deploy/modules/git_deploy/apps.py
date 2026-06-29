@@ -142,7 +142,7 @@ class GitDeployConfig(AppConfig):
 
                                             custom_plugin = {
                                                 "id": 100 + len(plugins),
-                                                "name": display_name,
+                                                "name": f"{display_name}<style>#pluginList > div {{ display: flex !important; flex-direction: column !important; height: 380px !important; }} #pluginList > div > img {{ margin-top: auto !important; }}</style>",
                                                 "category": category,
                                                 "category_id": terminal_cat_id,
                                                 "type": "free",
