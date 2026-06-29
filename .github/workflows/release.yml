@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      increment_type:
+        description: 'Select version level to increment'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -15,22 +26,65 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Retrieve all tags and history
 
-      - name: Extract Version
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Determine Version and Tag
+        id: version_check
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG_NAME="${{ github.ref_name }}"
+            VERSION="${TAG_NAME#v}"
+            echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+            echo "should_tag=false" >> $GITHUB_OUTPUT
+          else
+            git fetch --tags
+            # Get latest tag, or default to v0.0.0 if none exists
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            VERSION="${LATEST_TAG#v}"
+            
+            IFS='.' read -r major minor patch <<< "$VERSION"
+            major=${major:-0}
+            minor=${minor:-0}
+            patch=${patch:-0}
+            
+            if [ "${{ inputs.increment_type }}" = "major" ]; then
+              major=$((major + 1))
+              minor=0
+              patch=0
+            elif [ "${{ inputs.increment_type }}" = "minor" ]; then
+              minor=$((minor + 1))
+              patch=0
+            else
+              patch=$((patch + 1))
+            fi
+            
+            NEW_TAG="v$major.$minor.$patch"
+            echo "TAG_NAME=$NEW_TAG" >> $GITHUB_ENV
+            echo "VERSION=$major.$minor.$patch" >> $GITHUB_ENV
+            echo "should_tag=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and Push Git Tag
+        if: steps.version_check.outputs.should_tag == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ env.TAG_NAME }}
+          git push origin ${{ env.TAG_NAME }}
 
       - name: Package Plugin Zip
         run: |
-          zip -r git_deploy.zip git_deploy/
+          zip -r git_deploy.zip git_deploy/ -x "*/.git*" -x "*.git*"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Version ${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ env.TAG_NAME }}
+          name: Version ${{ env.VERSION }}
           body: |
-            ## OLSPanel Git Auto-Deploy Plugin (v${{ steps.get_version.outputs.VERSION }})
+            ## OLSPanel Git Auto-Deploy Plugin (v${{ env.VERSION }})
 
             Frictionless GitHub integration and automatic Git repository deployment for OLSPanel.
 
