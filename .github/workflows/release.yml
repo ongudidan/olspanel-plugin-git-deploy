@@ -90,17 +90,18 @@ jobs:
             Frictionless GitHub integration and automatic Git repository deployment for OLSPanel.
 
             ### Installation Options:
+            *Note: The following commands must be executed with root/administrative privileges (e.g. run directly as root or prefix with `sudo` depending on your distro).*
 
             #### Option 1: Install this specific version
             Run this command directly on your OLSPanel server:
             ```bash
-            sudo install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/download/${{ env.TAG_NAME }}/git_deploy_${{ env.TAG_NAME }}.zip
+            install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/download/${{ env.TAG_NAME }}/git_deploy_${{ env.TAG_NAME }}.zip
             ```
 
             #### Option 2: Always install the latest version
             Run this command directly on your OLSPanel server:
             ```bash
-            sudo install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/latest/download/git_deploy.zip
+            install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/latest/download/git_deploy.zip
             ```
 
             #### Option 3: Manual Web UI

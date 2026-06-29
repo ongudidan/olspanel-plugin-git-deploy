@@ -11,15 +11,17 @@ An official plugin for **OLSPanel** to automate continuous deployment of website
 
 ## Installation
 
+*Note: The command line installation instructions must be run with root/administrative privileges (e.g. prefix with `sudo` or run directly as root depending on your system configuration).*
+
 ### Method 1: Direct Command Line (Recommended)
 You can install the latest release directly:
 ```bash
-sudo install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/latest/download/git_deploy.zip
+install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/latest/download/git_deploy.zip
 ```
 
 Or target a specific version (e.g., `v1.0.0`):
 ```bash
-sudo install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/download/v1.0.0/git_deploy_v1.0.0.zip
+install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/download/v1.0.0/git_deploy_v1.0.0.zip
 ```
 
 ### Method 2: Manual Web UI
