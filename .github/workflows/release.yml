@@ -77,6 +77,7 @@ jobs:
       - name: Package Plugin Zip
         run: |
           zip -r git_deploy.zip git_deploy/ -x "*/.git*" -x "*.git*"
+          cp git_deploy.zip git_deploy_${{ env.TAG_NAME }}.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -88,16 +89,25 @@ jobs:
 
             Frictionless GitHub integration and automatic Git repository deployment for OLSPanel.
 
-            ### Installation:
+            ### Installation Options:
+
+            #### Option 1: Install this specific version
+            Run this command directly on your OLSPanel server:
+            ```bash
+            sudo install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/download/${{ env.TAG_NAME }}/git_deploy_${{ env.TAG_NAME }}.zip
+            ```
+
+            #### Option 2: Always install the latest version
             Run this command directly on your OLSPanel server:
             ```bash
             sudo install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/latest/download/git_deploy.zip
             ```
 
-            Alternatively (Manual Installation):
-            1. Download `git_deploy.zip` from the Assets below.
+            #### Option 3: Manual Web UI
+            1. Download `git_deploy_${{ env.TAG_NAME }}.zip` from the Assets below.
             2. Go to **Admin Panel** -> **Plugins** in your OLSPanel, click **Upload Plugin**, and select the downloaded file.
           draft: false
           prerelease: false
           files: |
             git_deploy.zip
+            git_deploy_${{ env.TAG_NAME }}.zip
