@@ -1,0 +1,1294 @@
+{% extends base_template %}
+
+{% block title %}Git Auto-Deploy Settings{% endblock title %}
+
+{% block content %}
+<div style="padding: 24px; font-family: 'Outfit', 'Inter', sans-serif; color: #1e293b;">
+
+    <!-- Upper Page Header -->
+    <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-radius: 4px; border: 1px solid rgba(226, 232, 240, 0.8); display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; margin-bottom: 24px; box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08);">
+        <div>
+            <h4 style="margin: 0; font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg, #1e293b 0%, #475569 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Git Auto-Deploy
+            </h4>
+            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">
+                Connect domains to GitHub repositories and automatically deploy on every push
+            </p>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button onclick="openModal('githubTokenModal')" class="btn btn-outline-secondary btn-sm" style="text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
+                ⚙ {% if has_github_token %}GitHub Connected{% else %}Connect GitHub{% endif %}
+            </button>
+            <button onclick="openModal('addConnectionModal')" class="btn btn-pill btn-success btn-sm" style="text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
+                <span>+</span> Connect Repository
+            </button>
+        </div>
+    </div>
+
+    <!-- Active Deployments Section -->
+    <h5 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; color: #334155;">Active Connections</h5>
+
+    {% if not deployments %}
+    <div style="background: #fff; border-radius: 4px; border: 1.5px dashed #cbd5e1; padding: 50px 20px; text-align: center; color: #64748b;">
+        <span style="font-size: 3rem; display: block; margin-bottom: 16px;">📂</span>
+        <h6 style="margin: 0 0 8px; font-size: 1rem; font-weight: 600; color: #334155;">No connected repositories found</h6>
+        <p style="margin: 0; font-size: 0.85rem; color: #94a3b8;">Link a domain or subdomain to start automatically publishing updates on git push.</p>
+    </div>
+    {% else %}
+    <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+        {% for dep in deployments %}
+        <div style="background: #fff; border-radius: 4px; border: 1px solid #e2e8f0; padding: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.02), 0 4px 6px -4px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 12px;">
+            
+            <!-- Connection Header -->
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <h6 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;">
+                        {{ dep.domain }}
+                    </h6>
+                    <code style="font-size: 0.75rem; color: #64748b; background: #f8fafc; padding: 2px 6px; border-radius: 4px;">
+                        {{ dep.deploy_path }}
+                    </code>
+                </div>
+                <div id="statusBadge_{{ dep.id }}">
+                    <!-- Status Badge -->
+                    {% if dep.last_status == 'success' %}
+                        <span style="background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Success</span>
+                    {% elif dep.last_status == 'failed' %}
+                        <span style="background: #fee2e2; color: #b91c1c; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Failed</span>
+                    {% elif dep.last_status == 'pending' %}
+                        <span style="background: #fef3c7; color: #d97706; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Deploying</span>
+                    {% else %}
+                        <span style="background: #e2e8f0; color: #475569; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">No Deploys</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Repository Details & Commit info in a tight block -->
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem;">
+                <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+                    <div>
+                        <span style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; margin-right: 4px;">Repository</span>
+                        <a href="{{ dep.repo_url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: 500; word-break: break-all;">
+                            {{ dep.repo_url }}
+                        </a>
+                    </div>
+                    <div>
+                        <span style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; margin-right: 4px;">Branch</span>
+                        <span style="font-family: monospace; font-weight: 600; color: #334155; background: #f1f5f9; padding: 1px 5px; border-radius: 4px;">
+                            {{ dep.branch }}
+                        </span>
+                    </div>
+                </div>
+
+                <div id="lastDeployDetails_{{ dep.id }}" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; {% if dep.last_commit == '-' or not dep.last_commit %}display: none;{% endif %}">
+                    <span style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; font-weight: 600;">Last Commit:</span>
+                    <span style="color: #334155; font-weight: 500; font-size: 0.82rem;">
+                        {{ dep.last_commit }}
+                    </span>
+                    <code style="font-size: 0.75rem; font-weight: 700; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; {% if not dep.last_hash %}display: none;{% endif %}">
+                        {{ dep.last_hash|default:'' }}
+                    </code>
+                </div>
+            </div>
+
+            <!-- Credentials & Setup Info -->
+            {% if not dep.auto_configured %}
+            <div style="background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Webhook configuration -->
+                <div>
+                    <span style="font-size: 0.78rem; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;">Webhook URL</span>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" readonly value="{{ webhook_url }}?secret={{ dep.webhook_secret }}" style="flex: 1; font-size: 0.78rem; font-family: monospace; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155;" id="webhookUrl_{{ dep.id }}">
+                        <button onclick="copyToClipboard('webhookUrl_{{ dep.id }}')" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 0.78rem; cursor: pointer; font-weight: 600; color: #475569; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9';" onmouseout="this.style.background='#fff';">Copy</button>
+                    </div>
+                </div>
+
+                <!-- Private deploy key if present -->
+                {% if dep.ssh_public_key %}
+                <div style="border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;">Deploy SSH Key</span>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" readonly value="{{ dep.ssh_public_key }}" style="flex: 1; font-size: 0.78rem; font-family: monospace; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155;" id="publicKey_{{ dep.id }}">
+                        <button onclick="copyToClipboard('publicKey_{{ dep.id }}')" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 0.78rem; cursor: pointer; font-weight: 600; color: #475569; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9';" onmouseout="this.style.background='#fff';">Copy</button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <!-- Auto-configured badge -->
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #166534; font-size: 0.82rem; font-weight: 500;">
+                <span>Webhook and Deploy Key are automatically managed on GitHub by OLSPanel.</span>
+            </div>
+            {% endif %}
+
+            <!-- Action buttons -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                <button onclick="confirmDelete({{ dep.id }})" class="btn btn-outline-danger btn-sm" style="text-transform: none;">
+                    Delete Link
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="openLogsModal({{ dep.id }})" class="btn btn-outline-secondary btn-sm" style="text-transform: none;">
+                        View Logs
+                    </button>
+                    <button onclick="triggerManualDeploy({{ dep.id }}, this)" class="btn btn-primary btn-sm" style="text-transform: none;">
+                        Deploy Now
+                    </button>
+                </div>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Create Deployment Connection Modal -->
+    <div id="addConnectionModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: #fff; border-radius: 4px; max-width: 550px; width: 100%; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); overflow: hidden; animation: modalIn 0.3s ease;">
+            
+            <div style="padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+                <h5 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">Connect Repository</h5>
+                <button onclick="closeModal('addConnectionModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; transition: color 0.2s;" onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'">×</button>
+            </div>
+
+            <form id="createDeploymentForm" style="padding: 24px; display: flex; flex-direction: column; gap: 20px;" onsubmit="submitCreateForm(event)">
+                {% csrf_token %}
+                <div id="createFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 12px; font-size: 0.85rem; color: #b91c1c; line-height: 1.4; text-align: left;"></div>
+                
+                <!-- Domain selection -->
+                <div>
+                    <label style="display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Select Domain / Subdomain</label>
+                    <div class="custom-select-container" id="domainSelectContainer" style="position: relative; width: 100%;">
+                        <!-- Hidden select input to submit value with form -->
+                        <select name="domain_id" id="hiddenDomainSelect" required style="display: none;">
+                            <option value="" disabled selected>-- Choose a domain --</option>
+                            {% for dom in domains %}
+                                <option value="{{ dom.id }}">{{ dom.domain }}</option>
+                            {% endfor %}
+                        </select>
+                        
+                        <!-- Trigger Button -->
+                        <div class="custom-select-trigger" onclick="toggleCustomDropdown()" style="display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 16px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.9rem; color: #64748b; cursor: pointer; transition: all 0.2s; user-select: none;">
+                            <span id="customSelectLabel">-- Choose a domain --</span>
+                            <span style="font-size: 0.75rem; transition: transform 0.2s;" id="customSelectArrow">▼</span>
+                        </div>
+                        
+                        <!-- Dropdown Menu -->
+                        <div class="custom-select-dropdown" id="customSelectDropdown" style="display: none; position: absolute; top: 48px; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 2100; overflow: hidden;">
+                            <!-- Search Input -->
+                            <div style="padding: 10px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px;">
+                                <span style="color: #94a3b8; font-size: 0.9rem;">🔍</span>
+                                <input type="text" id="customSelectSearch" placeholder="Search domains..." oninput="filterCustomOptions()" style="width: 100%; border: none; outline: none; font-size: 0.9rem; color: #1e293b;">
+                            </div>
+                            <!-- Options List -->
+                            <div id="customSelectOptionsList" style="max-height: 180px; overflow-y: auto; padding: 4px;">
+                                {% for dom in domains %}
+                                    <div class="custom-select-option" data-value="{{ dom.id }}" onclick="selectCustomOption('{{ dom.id }}', '{{ dom.domain }}')" style="padding: 8px 12px; border-radius: 4px; font-size: 0.88rem; color: #334155; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#f1f5f9';" onmouseout="this.style.background='transparent';">
+                                        {{ dom.domain }}
+                                    </div>
+                                {% endfor %}
+                                <div id="noDomainsFound" style="display: none; padding: 12px; text-align: center; color: #94a3b8; font-size: 0.85rem;">
+                                    No domains found
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Repository connection inputs -->
+                <div>
+                    {% if has_github_token %}
+                    <!-- Tab Selector for repository selection method -->
+                    <div style="display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 12px; gap: 16px; font-size: 0.85rem; font-weight: 600; color: #64748b;">
+                        <span id="tabSelectRepo" onclick="switchRepoTab('select')" style="padding: 8px 0; border-bottom: 2px solid {{ branding.brand_color|default:'#ef6d19' }}; color: {{ branding.brand_color|default:'#ef6d19' }}; cursor: pointer; user-select: none;">
+                            Select Repository
+                        </span>
+                        <span id="tabManualRepo" onclick="switchRepoTab('manual')" style="padding: 8px 0; border-bottom: 2px solid transparent; cursor: pointer; user-select: none;">
+                            Custom Repository URL
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    <!-- Tab 1: Fetch Repos Select Dropdown -->
+                    {% if has_github_token %}
+                    <div id="githubSelectRepoContainer" style="display: block; margin-bottom: 12px;">
+                        <label style="display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Select GitHub Repository</label>
+                        <div class="custom-select-container" id="githubSelectContainer" style="position: relative; width: 100%;">
+                            <div class="custom-select-trigger" id="githubSelectTrigger" onclick="toggleGithubDropdown()" style="display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 16px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.9rem; color: #64748b; cursor: pointer; transition: all 0.2s; user-select: none;">
+                                <span id="githubSelectLabel">Click to load repositories...</span>
+                                <span style="font-size: 0.75rem; transition: transform 0.2s;" id="githubSelectArrow">▼</span>
+                            </div>
+                            
+                            <div class="custom-select-dropdown" id="githubSelectDropdown" style="display: none; position: absolute; top: 48px; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 2100; overflow: hidden;">
+                                <div style="padding: 10px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px;">
+                                    <span style="color: #94a3b8; font-size: 0.9rem;">🔍</span>
+                                    <input type="text" id="githubSelectSearch" placeholder="Search your repos..." oninput="filterGithubOptions()" style="width: 100%; border: none; outline: none; font-size: 0.9rem; color: #1e293b;">
+                                </div>
+                                <div id="githubSelectOptionsList" style="max-height: 180px; overflow-y: auto; padding: 4px;">
+                                    <div style="padding: 12px; text-align: center; color: #64748b; font-size: 0.85rem;" id="githubReposLoading">
+                                        Loading repositories...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Tab 2: Manual text Input -->
+                    <div id="manualRepoUrlContainer" style="display: {% if has_github_token %}none{% else %}block{% endif %}; margin-bottom: 12px;">
+                        <label style="display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Git Repository URL</label>
+                        <input type="text" name="repo_url" id="repoUrlInput" {% if not has_github_token %}required{% endif %} placeholder="e.g. git@github.com:username/repo.git" style="width: 100%; height: 44px; padding: 0 12px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; font-size: 0.9rem; color: #1e293b;">
+                        <small style="color: #94a3b8; font-size: 0.75rem; display: block; margin-top: 4px;">Use SSH format (git@...) for private repositories.</small>
+                    </div>
+
+                    <!-- Auto-configure Webhooks on GitHub checkbox -->
+                    {% if has_github_token %}
+                    <div id="autoConfigureContainer" style="display: block; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 12px; margin-top: 14px; margin-bottom: 14px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" name="auto_configure" id="autoConfigureCheckbox" checked style="width: 18px; height: 18px; cursor: pointer; margin: 0;">
+                            <label for="autoConfigureCheckbox" style="font-size: 0.85rem; color: #475569; font-weight: 600; cursor: pointer; user-select: none;">
+                                Auto-configure Webhook & Deploy Key on GitHub
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Branch Stacked -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div>
+                        <label style="display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Target Branch</label>
+                        <input type="text" name="branch" value="main" placeholder="main" style="width: 100%; height: 44px; padding: 0 12px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; font-size: 0.9rem; color: #1e293b;">
+                    </div>
+                </div>
+
+                <!-- Footer buttons -->
+                <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" onclick="closeModal('addConnectionModal')" class="btn btn-sm" style="text-transform: none; background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 16px; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc';" onmouseout="this.style.background='#ffffff';">Cancel</button>
+                    <button type="submit" id="btnConnectRepo" class="btn btn-danger btn-sm" style="text-transform: none;">Connect Repo</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- GitHub Token Modal -->
+    <div id="githubTokenModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: #fff; border-radius: 4px; max-width: 500px; width: 100%; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); overflow: hidden; animation: modalIn 0.3s ease;">
+            
+            <div style="padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+                <h5 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">GitHub Integration</h5>
+                <button onclick="closeModal('githubTokenModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; transition: color 0.2s;" onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'">×</button>
+            </div>
+
+            <!-- Admin Settings Tab Headers if superuser/admin -->
+            {% if request.admin_user or request.user.is_superuser %}
+            <div style="display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 0 24px; gap: 20px; font-size: 0.85rem; font-weight: 600; border-top: 1px solid #f1f5f9;">
+                <span id="tabGithubUser" onclick="switchGithubModalTab('user')" style="padding: 12px 0; border-bottom: 2px solid {{ branding.brand_color|default:'#ef6d19' }}; color: {{ branding.brand_color|default:'#ef6d19' }}; cursor: pointer; user-select: none;">
+                    Connect Account
+                </span>
+                <span id="tabGithubAdmin" onclick="switchGithubModalTab('admin')" style="padding: 12px 0; border-bottom: 2px solid transparent; color: #64748b; cursor: pointer; user-select: none;">
+                    GitHub App Settings
+                </span>
+            </div>
+            {% endif %}
+
+            <!-- Tab Content: User Connection -->
+            <div id="githubModalUserContent" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+                <!-- Hidden input for backward compatibility of JS functions -->
+                <input type="hidden" id="githubPatInput" value="">
+                
+                {% if has_github_token %}
+                <div style="text-align: center; padding: 10px 0;">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: #f0fdf4; border: 1px solid #bbf7d0; color: #16a34a; font-size: 1.5rem; margin-bottom: 16px;">
+                        ✓
+                    </div>
+                    <h6 style="margin: 0 0 8px; font-size: 1.1rem; font-weight: 600; color: #1e293b;">GitHub Account Connected</h6>
+                    <p style="margin: 0 0 24px; font-size: 0.85rem; color: #64748b; line-height: 1.5;">
+                        Your account is successfully linked. You can now select your repositories when connecting sites.
+                    </p>
+                    <div style="display: flex; justify-content: center; gap: 12px;">
+                        <button type="button" onclick="closeModal('githubTokenModal')" class="btn btn-sm" style="text-transform: none; background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 16px; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc';" onmouseout="this.style.background='#ffffff';">Close</button>
+                        <button type="button" onclick="submitTokenForm('delete')" class="btn btn-outline-danger btn-sm" style="text-transform: none;">Disconnect</button>
+                    </div>
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: 10px 0;">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: #f8fafc; border: 1px solid #e2e8f0; color: #475569; font-size: 1.5rem; margin-bottom: 16px;">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    </div>
+                    <h6 style="margin: 0 0 8px; font-size: 1.1rem; font-weight: 600; color: #1e293b;">Link GitHub Profile</h6>
+                    <p style="margin: 0 0 24px; font-size: 0.85rem; color: #64748b; line-height: 1.5;">
+                        Connect your GitHub account to access your repositories and automate webhooks for instant deployment.
+                    </p>
+                    
+                    {% if oauth_configured %}
+                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                        <a href="{% url 'git_deploy_oauth_redirect' %}" class="btn btn-pill btn-success btn-sm" style="text-transform: none; display: inline-flex; align-items: center; gap: 8px;">
+                            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                            Connect GitHub Account
+                        </a>
+                        <button type="button" onclick="closeModal('githubTokenModal')" class="btn btn-sm" style="text-transform: none; background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 16px; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc';" onmouseout="this.style.background='#ffffff';">Cancel</button>
+                    </div>
+                    {% else %}
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 14px; font-size: 0.82rem; color: #991b1b; text-align: left; line-height: 1.5;">
+                        <strong>⚠️ Integration Not Configured</strong><br>
+                        GitHub OAuth is not configured on this server yet.<br>
+                        {% if request.admin_user or request.user.is_superuser %}
+                        Please switch to the <strong>GitHub App Settings</strong> tab to configure it.
+                        {% else %}
+                        Please request the system administrator to configure the server-wide GitHub App.
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab Content: Admin settings -->
+            {% if request.admin_user or request.user.is_superuser %}
+            <div id="githubModalAdminContent" style="display: none; padding: 24px; flex-direction: column; gap: 16px;">
+                <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.5; text-align: left;">
+                    Generate a GitHub App for this OLSPanel server automatically. This enables all users on this panel to securely link their repositories.
+                </p>
+
+                {% if oauth_configured %}
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 10px 12px; text-align: left;">
+                        <span>✓</span> <span>System GitHub App is currently active and configured.</span>
+                    </div>
+                    
+                    <button type="button" onclick="disconnectGithubApp()" class="btn btn-outline-danger btn-sm" style="text-transform: none; width: 100%; display: flex; align-items: center; justify-content: center;">
+                        Disconnect GitHub App
+                    </button>
+ 
+                    <div style="font-size: 0.78rem; color: #64748b; line-height: 1.5; text-align: left; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        <strong style="color: #475569;">💡 How to delete the App on GitHub:</strong><br>
+                        Since this app is registered under your developer settings on GitHub, disconnecting it locally does not automatically delete it from GitHub. To delete it fully:
+                        <div style="margin-top: 8px;">
+                            <a href="{% if github_app_slug %}https://github.com/settings/apps/{{ github_app_slug }}{% else %}https://github.com/settings/apps{% endif %}" target="_blank" style="color: {{ branding.brand_color|default:'#ef6d19' }}; font-weight: 600; text-decoration: underline;">
+                                Open App Settings on GitHub →
+                            </a>
+                        </div>
+                        Scroll down to the bottom of the page and click <strong>"Delete GitHub App"</strong>.
+                    </div>
+                </div>
+                {% else %}
+                <!-- Frictionless Setup Form -->
+                <form action="https://github.com/settings/apps/new" method="post" style="margin: 0; width: 100%;">
+                    <input type="hidden" name="manifest" id="githubManifestPayload">
+                    <button type="submit" onclick="generateGithubManifest(event, this)" class="btn btn-pill btn-success btn-sm" style="text-transform: none; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        Setup GitHub App Automatically
+                    </button>
+                </form>
+
+                <!-- Critical install instruction -->
+                <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #d97706; border-radius: 4px; padding: 12px; font-size: 0.8rem; color: #78350f; line-height: 1.5; text-align: left;">
+                    <strong style="display: block; margin-bottom: 4px;">⚠️ Important Step:</strong>
+                    During setup, GitHub will ask where to install the App. Make sure to choose <strong>"All repositories"</strong> to ensure your private repositories can be retrieved by the panel.
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <!-- View Logs Drawer -->
+    <div id="logsDrawerModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: stretch; justify-content: flex-end;">
+        <div style="background: #fff; width: 100%; max-width: 650px; height: 100vh; max-height: 100vh; border-left: 1px solid #e2e8f0; box-shadow: -10px 0 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; animation: drawerIn 0.3s ease;">
+            
+            <div style="padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; background: #f8fafc;">
+                <div>
+                    <h5 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">Deployment History</h5>
+                    <p style="margin: 4px 0 0; font-size: 0.8rem; color: #64748b;">Recent automation steps and deployment logs</p>
+                </div>
+                <button onclick="closeModal('logsDrawerModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8;" onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'">×</button>
+            </div>
+
+            <div id="logsContainer" style="flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;">
+                <!-- Dynamically populated logs -->
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<style>
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes drawerIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+.log-accordion {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+.log-accordion:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+.log-header {
+    padding: 10px 14px;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.2s;
+}
+.log-header:hover {
+    background: #f8fafc;
+}
+.log-body {
+    padding: 16px;
+    background: #0f172a;
+    color: #f8fafc;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.82rem;
+    white-space: pre-wrap;
+    display: none;
+    border-top: 1px solid #e2e8f0;
+    box-sizing: border-box;
+}
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(217, 119, 6, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+}
+</style>
+
+<script>
+function toggleCustomDropdown() {
+    const dropdown = document.getElementById('customSelectDropdown');
+    const arrow = document.getElementById('customSelectArrow');
+    const trigger = document.querySelector('.custom-select-trigger');
+    
+    if (dropdown.style.display === 'none' || !dropdown.style.display) {
+        dropdown.style.display = 'block';
+        arrow.style.transform = 'rotate(180deg)';
+        trigger.style.borderColor = '{{ branding.brand_color|default:"#ef6d19" }}';
+        trigger.style.boxShadow = '0 0 0 3px rgba(239, 109, 25, 0.15)';
+        document.getElementById('customSelectSearch').focus();
+    } else {
+        dropdown.style.display = 'none';
+        arrow.style.transform = 'none';
+        trigger.style.borderColor = '#cbd5e1';
+        trigger.style.boxShadow = 'none';
+    }
+}
+
+function selectCustomOption(val, text) {
+    const hiddenSelect = document.getElementById('hiddenDomainSelect');
+    hiddenSelect.value = val;
+    
+    const label = document.getElementById('customSelectLabel');
+    label.textContent = text;
+    label.style.color = '#1e293b';
+    label.style.fontWeight = '500';
+    
+    toggleCustomDropdown();
+    
+    const options = document.querySelectorAll('.custom-select-option');
+    options.forEach(opt => {
+        if (opt.getAttribute('data-value') === val) {
+            opt.style.background = 'rgba(239, 109, 25, 0.1)';
+            opt.style.color = '{{ branding.brand_color|default:"#ef6d19" }}';
+            opt.style.fontWeight = '600';
+        } else {
+            opt.style.background = 'transparent';
+            opt.style.color = '#334155';
+            opt.style.fontWeight = 'normal';
+        }
+    });
+}
+
+function filterCustomOptions() {
+    const search = document.getElementById('customSelectSearch').value.toLowerCase();
+    const options = document.querySelectorAll('.custom-select-option');
+    let found = 0;
+    
+    options.forEach(opt => {
+        const text = opt.textContent.toLowerCase();
+        if (text.includes(search)) {
+            opt.style.display = 'block';
+            found++;
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+    
+    const noFound = document.getElementById('noDomainsFound');
+    if (found === 0) {
+        noFound.style.display = 'block';
+    } else {
+        noFound.style.display = 'none';
+    }
+}
+
+document.addEventListener('click', function(e) {
+    const container = document.getElementById('domainSelectContainer');
+    const dropdown = document.getElementById('customSelectDropdown');
+    const arrow = document.getElementById('customSelectArrow');
+    const trigger = document.querySelector('.custom-select-trigger');
+    
+    if (container && !container.contains(e.target)) {
+        if (dropdown && dropdown.style.display === 'block') {
+            dropdown.style.display = 'none';
+            arrow.style.transform = 'none';
+            trigger.style.borderColor = '#cbd5e1';
+            trigger.style.boxShadow = 'none';
+        }
+    }
+});
+
+function openModal(id) {
+    const modal = document.getElementById(id);
+    modal.style.display = "flex";
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    modal.style.display = "none";
+    if (id === 'logsDrawerModal') {
+        if (window.logPollingInterval) {
+            clearInterval(window.logPollingInterval);
+            window.logPollingInterval = null;
+        }
+        if (window.activeLogStreamReader) {
+            window.activeLogStreamReader.cancel();
+            window.activeLogStreamReader = null;
+        }
+    }
+}
+
+function copyToClipboard(id) {
+    const input = document.getElementById(id);
+    input.select();
+    input.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(input.value);
+    
+    // Quick notification tooltip
+    const button = input.nextElementSibling;
+    const oldText = button.textContent;
+    button.textContent = "Copied!";
+    button.style.background = "#dcfce7";
+    button.style.color = "#15803d";
+    button.style.borderColor = "#86efac";
+    setTimeout(() => {
+        button.textContent = oldText;
+        button.style.background = "#fff";
+        button.style.color = "#475569";
+        button.style.borderColor = "#cbd5e1";
+    }, 2000);
+}
+
+function showCreateFormError(message) {
+    const errorBanner = document.getElementById('createFormError');
+    errorBanner.textContent = message;
+    errorBanner.style.display = 'block';
+    errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function submitCreateForm(event) {
+    event.preventDefault();
+    const form = document.getElementById('createDeploymentForm');
+    
+    // Clear previous errors
+    document.getElementById('createFormError').style.display = 'none';
+    
+    // Client-side validations
+    const domainId = document.getElementById('hiddenDomainSelect').value;
+    if (!domainId) {
+        showCreateFormError("Please select a target domain or subdomain.");
+        return;
+    }
+    
+    const repoUrl = document.getElementById('repoUrlInput').value.trim();
+    if (!repoUrl) {
+        const githubSelect = document.getElementById('githubSelectRepoContainer');
+        if (githubSelect && githubSelect.style.display !== 'none') {
+            showCreateFormError("Please select a GitHub repository from the dropdown list.");
+        } else {
+            showCreateFormError("Please enter a target Git repository URL.");
+        }
+        return;
+    }
+    
+    const branch = form.querySelector('input[name="branch"]').value.trim();
+    if (!branch) {
+        showCreateFormError("Please enter a target deploy branch (e.g. main).");
+        return;
+    }
+    
+    // Button loading state & lock
+    const submitBtn = document.getElementById('btnConnectRepo');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<img src="/media/loading.gif" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle; display: inline-block;" /> Connecting...';
+    
+    const formData = new FormData(form);
+    
+    fetch("{% url 'git_deploy_create' %}", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === "success") {
+            location.reload();
+        } else {
+            showCreateFormError(data.message);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    })
+    .catch(err => {
+        showCreateFormError("Server error connecting repository. Please try again.");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+}
+
+window.logPollingInterval = null;
+
+function triggerManualDeploy(depId, button) {
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = "Dispatching...";
+    
+    // Update main page status badge to pending immediately
+    updateMainPageStatus(depId, 'pending');
+
+    fetch(`/module/git_deploy/deploy/${depId}/`)
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === "success") {
+            button.innerHTML = "Triggered!";
+            setTimeout(() => {
+                // Open logs drawer and focus on this new log_id
+                openLogsModal(depId, data.log_id);
+            }, 1000);
+        } else {
+            alert("Error: " + data.message);
+            button.disabled = false;
+            button.innerHTML = originalText;
+            updateMainPageStatus(depId, 'failed');
+        }
+    })
+    .catch(err => {
+        alert("Server error triggering deploy.");
+        button.disabled = false;
+        button.innerHTML = originalText;
+        updateMainPageStatus(depId, 'failed');
+    });
+}
+
+function confirmDelete(depId) {
+    if(confirm("Are you sure you want to delete this repository link? This will not delete your files, but it will remove the webhook listener and deploy configurations.")) {
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        fetch(`/module/git_deploy/delete/${depId}/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") {
+                location.reload();
+            } else {
+                alert("Error deleting config: " + data.message);
+            }
+        });
+    }
+}
+
+function getStatusDotHtml(status) {
+    if (status === 'success') {
+        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);"></span>';
+    } else if (status === 'failed') {
+        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);"></span>';
+    } else {
+        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #d97706; animation: pulse 1.5s infinite;"></span>';
+    }
+}
+
+function getStatusBadgeHtml(status) {
+    if (status === 'success') {
+        return '<span style="color:#16a34a; font-weight:600; font-size:0.75rem;">SUCCESS</span>';
+    } else if (status === 'failed') {
+        return '<span style="color:#dc2626; font-weight:600; font-size:0.75rem;">FAILED</span>';
+    } else {
+        return '<span style="color:#d97706; font-weight:600; font-size:0.75rem;">PENDING</span>';
+    }
+}
+
+function createLogAccordionElement(log) {
+    const date = new Date(log.created_at).toLocaleString();
+    const logItem = document.createElement('div');
+    logItem.className = 'log-accordion';
+    logItem.id = `logRun_${log.id}`;
+    
+    logItem.innerHTML = `
+        <div class="log-header" onclick="toggleLogBody(this)" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #fff; transition: all 0.2s;">
+            <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                <div style="flex-shrink: 0; display: flex; align-items: center;">
+                    ${getStatusDotHtml(log.status)}
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
+                        ${log.commit_message || 'Manual Deployment'}
+                    </div>
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                        <span>${date}</span>
+                        <span>•</span>
+                        <code style="font-size: 0.7rem; background: #f1f5f9; padding: 1px 4px; border-radius: 3px; color: #475569;">
+                            ${log.commit_hash ? log.commit_hash.substring(0, 7) : 'no hash'}
+                        </code>
+                        <span>•</span>
+                        <span style="color: #475569;">by ${log.commit_author || 'user'}</span>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-left: 12px; flex-shrink: 0;">
+                <span style="font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: ${log.status === 'success' ? '#16a34a' : log.status === 'failed' ? '#dc2626' : '#d97706'}">
+                    ${log.status}
+                </span>
+                <span class="log-arrow" style="font-size: 0.75rem; color: #94a3b8; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #f1f5f9; transition: all 0.2s;">▼</span>
+            </div>
+        </div>
+        <div class="log-body" style="display: none; padding: 16px; background: #0f172a; color: #f8fafc; font-family: monospace; font-size: 0.82rem; white-space: pre-wrap; word-break: break-all; border-top: 1px solid #e2e8f0; box-sizing: border-box;">${escapeHtml(log.log_output || 'No log details available.')}</div>
+    `;
+    return logItem;
+}
+
+function updateMainPageStatus(depId, status, latestLog) {
+    const mainBadge = document.getElementById(`statusBadge_${depId}`);
+    if (mainBadge) {
+        if (status === 'success') {
+            mainBadge.innerHTML = '<span style="background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Success</span>';
+        } else if (status === 'failed') {
+            mainBadge.innerHTML = '<span style="background: #fee2e2; color: #b91c1c; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Failed</span>';
+        } else if (status === 'pending') {
+            mainBadge.innerHTML = '<span style="background: #fef3c7; color: #d97706; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Deploying</span>';
+        }
+    }
+    
+    // Update commit details if visible
+    const lastDeployDetails = document.getElementById(`lastDeployDetails_${depId}`);
+    if (lastDeployDetails) {
+        if (latestLog) {
+            lastDeployDetails.style.display = "flex";
+            const commitMsgSpan = lastDeployDetails.querySelector('span[style*="font-weight: 500"]');
+            if (commitMsgSpan) {
+                commitMsgSpan.innerHTML = `${latestLog.commit_message || 'Manual Deployment'}`;
+            }
+            const hashElement = lastDeployDetails.querySelector('code');
+            if (hashElement) {
+                if (latestLog.commit_hash) {
+                    hashElement.style.display = "inline-block";
+                    hashElement.textContent = latestLog.commit_hash.substring(0, 7);
+                } else {
+                    hashElement.style.display = "none";
+                }
+            }
+        }
+    }
+}
+
+window.activeLogStreamReader = null;
+
+function streamLogOutput(logId, logBodyElement, depId, deployBtn) {
+    if (window.activeLogStreamReader) {
+        window.activeLogStreamReader.cancel();
+        window.activeLogStreamReader = null;
+    }
+
+    logBodyElement.textContent = "Connecting to live log stream...\n";
+
+    fetch(`/module/git_deploy/deploy/stream/${logId}/`)
+    .then(async res => {
+        if (!res.ok) {
+            logBodyElement.textContent += "\nError connecting to log stream.";
+            return;
+        }
+
+        const reader = res.body.getReader();
+        window.activeLogStreamReader = reader;
+        const decoder = new TextDecoder("utf-8");
+
+        logBodyElement.textContent = ""; // Clear loader message
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                logBodyElement.textContent += chunk;
+                const logsContainer = document.getElementById('logsContainer');
+                if (logsContainer) {
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+            }
+        } catch (err) {
+            logBodyElement.textContent += "\n\nStream interrupted: " + err;
+        } finally {
+            window.activeLogStreamReader = null;
+            if (deployBtn) {
+                deployBtn.disabled = false;
+                deployBtn.innerHTML = "Deploy Now";
+            }
+            refreshLogsList(depId);
+        }
+    })
+    .catch(err => {
+        logBodyElement.textContent += "\nConnection error: " + err;
+        if (deployBtn) {
+            deployBtn.disabled = false;
+            deployBtn.innerHTML = "Deploy Now";
+        }
+    });
+}
+
+function refreshLogsList(depId) {
+    fetch(`/module/git_deploy/logs/${depId}/`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success" && data.logs.length > 0) {
+            const container = document.getElementById('logsContainer');
+            container.innerHTML = "";
+            data.logs.forEach((log, index) => {
+                const logItem = createLogAccordionElement(log);
+                container.appendChild(logItem);
+                
+                // Keep the first/latest log expanded if it was the one we just streamed
+                if (index === 0) {
+                    const body = logItem.querySelector('.log-body');
+                    const arrow = logItem.querySelector('.log-arrow');
+                    body.style.display = "block";
+                    logItem.querySelector('.log-header').style.borderBottomColor = "#e2e8f0";
+                    if (arrow) arrow.textContent = "▲";
+                    setTimeout(() => {
+                        const logsContainer = document.getElementById('logsContainer');
+                        if (logsContainer) {
+                            logsContainer.scrollTop = logsContainer.scrollHeight;
+                        }
+                    }, 50);
+                }
+            });
+            const latestLog = data.logs[0];
+            updateMainPageStatus(depId, latestLog.status, latestLog);
+        }
+    });
+}
+
+function openLogsModal(depId, activeLogId = null) {
+    if (window.activeLogStreamReader) {
+        window.activeLogStreamReader.cancel();
+        window.activeLogStreamReader = null;
+    }
+
+    const container = document.getElementById('logsContainer');
+    container.innerHTML = "<div style='color:#64748b; text-align:center;'>Loading logs...</div>";
+    openModal('logsDrawerModal');
+    
+    // Find the deploy button on main page to re-enable/disable it
+    const deployBtn = document.querySelector(`button[onclick*="triggerManualDeploy(${depId},"]`);
+    
+    fetch(`/module/git_deploy/logs/${depId}/`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success" && data.logs.length > 0) {
+            container.innerHTML = "";
+            data.logs.forEach((log, index) => {
+                const logItem = createLogAccordionElement(log);
+                container.appendChild(logItem);
+                
+                // Expand the first/latest log if it is pending or matches activeLogId
+                if (index === 0 && (log.status === 'pending' || log.id === activeLogId)) {
+                    const body = logItem.querySelector('.log-body');
+                    const arrow = logItem.querySelector('.log-arrow');
+                    body.style.display = "block";
+                    logItem.querySelector('.log-header').style.borderBottomColor = "#e2e8f0";
+                    if (arrow) arrow.textContent = "▲";
+                    setTimeout(() => {
+                        const logsContainer = document.getElementById('logsContainer');
+                        if (logsContainer) {
+                            logsContainer.scrollTop = logsContainer.scrollHeight;
+                        }
+                    }, 50);
+                    
+                    // If it is pending, start streaming
+                    if (log.status === 'pending') {
+                        if (deployBtn) {
+                            deployBtn.disabled = true;
+                            deployBtn.innerHTML = "Deploying...";
+                        }
+                        streamLogOutput(log.id, body, depId, deployBtn);
+                    }
+                }
+            });
+        } else {
+            container.innerHTML = "<div style='color:#64748b; text-align:center;'>No deployment runs found for this project.</div>";
+        }
+    })
+    .catch(err => {
+        container.innerHTML = "<div style='color:#ef4444; text-align:center;'>Failed to load deployment history.</div>";
+    });
+}
+
+function toggleLogBody(headerElement) {
+    const body = headerElement.nextElementSibling;
+    const arrow = headerElement.querySelector('.log-arrow');
+    if (body.style.display === "block") {
+        body.style.display = "none";
+        headerElement.style.borderBottomColor = "transparent";
+        if (arrow) arrow.textContent = "▼";
+    } else {
+        body.style.display = "block";
+        headerElement.style.borderBottomColor = "#e2e8f0";
+        if (arrow) arrow.textContent = "▲";
+        setTimeout(() => {
+            const logsContainer = document.getElementById('logsContainer');
+            if (logsContainer) {
+                body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, 50);
+    }
+}
+
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+let githubRepos = [];
+let githubReposLoaded = false;
+
+function submitTokenForm(action) {
+    const token = document.getElementById('githubPatInput').value.trim();
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    
+    if (action === 'save' && !token) {
+        alert("Please enter a token first.");
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', action);
+    formData.append('token', token);
+    
+    fetch("{% url 'git_deploy_token' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": csrfToken
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert("Error: " + data.message);
+        }
+    })
+    .catch(err => {
+        alert("Server error managing GitHub token.");
+    });
+}
+
+function disconnectGithubApp() {
+    if (confirm("Are you sure you want to disconnect the GitHub App from this server? This will clear all GitHub App settings and linked user profile tokens.")) {
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        fetch("{% url 'git_deploy_settings_disconnect' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                alert("GitHub App disconnected locally. We will now open your GitHub App Developer Settings so you can delete the App from GitHub too.");
+                const appSlug = "{{ github_app_slug }}";
+                const githubUrl = appSlug ? `https://github.com/settings/apps/${appSlug}` : "https://github.com/settings/apps";
+                window.open(githubUrl, '_blank');
+                location.reload();
+            } else {
+                alert("Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("Server error disconnecting GitHub App.");
+        });
+    }
+}
+
+function switchRepoTab(tab) {
+    const tabSelect = document.getElementById('tabSelectRepo');
+    const tabManual = document.getElementById('tabManualRepo');
+    const selectContainer = document.getElementById('githubSelectRepoContainer');
+    const manualContainer = document.getElementById('manualRepoUrlContainer');
+    const repoInput = document.getElementById('repoUrlInput');
+    const autoConfigure = document.getElementById('autoConfigureContainer');
+    const repoTypeContainer = document.getElementById('repoTypeContainer');
+    
+    if (tab === 'select') {
+        tabSelect.style.borderColor = "{{ branding.brand_color|default:'#ef6d19' }}";
+        tabSelect.style.color = "{{ branding.brand_color|default:'#ef6d19' }}";
+        tabManual.style.borderColor = "transparent";
+        tabManual.style.color = "#64748b";
+        
+        selectContainer.style.display = "block";
+        manualContainer.style.display = "none";
+        repoInput.required = false;
+        if (autoConfigure) autoConfigure.style.display = "block";
+        if (repoTypeContainer) repoTypeContainer.style.display = "none";
+    } else {
+        tabManual.style.borderColor = "{{ branding.brand_color|default:'#ef6d19' }}";
+        tabManual.style.color = "{{ branding.brand_color|default:'#ef6d19' }}";
+        tabSelect.style.borderColor = "transparent";
+        tabSelect.style.color = "#64748b";
+        
+        selectContainer.style.display = "none";
+        manualContainer.style.display = "block";
+        repoInput.required = true;
+        if (autoConfigure) autoConfigure.style.display = "none";
+        if (repoTypeContainer) repoTypeContainer.style.display = "block";
+    }
+}
+
+function toggleGithubDropdown() {
+    const dropdown = document.getElementById('githubSelectDropdown');
+    const arrow = document.getElementById('githubSelectArrow');
+    
+    if (dropdown.style.display === "none") {
+        dropdown.style.display = "block";
+        arrow.style.transform = "rotate(180deg)";
+        document.getElementById('githubSelectSearch').focus();
+        
+        if (!githubReposLoaded) {
+            loadGithubRepos();
+        }
+    } else {
+        dropdown.style.display = "none";
+        arrow.style.transform = "none";
+    }
+}
+
+function loadGithubRepos() {
+    const list = document.getElementById('githubSelectOptionsList');
+    list.innerHTML = `<div style="padding: 12px; text-align: center; color: #64748b; font-size: 0.85rem;" id="githubReposLoading">Loading repositories...</div>`;
+    
+    fetch("{% url 'git_deploy_repos' %}")
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            githubRepos = data.repos;
+            githubReposLoaded = true;
+            renderGithubOptions(githubRepos);
+        } else {
+            list.innerHTML = `<div style="padding: 12px; text-align: center; color: #ef4444; font-size: 0.85rem;">Error: ${data.message}</div>`;
+        }
+    })
+    .catch(err => {
+        list.innerHTML = `<div style="padding: 12px; text-align: center; color: #ef4444; font-size: 0.85rem;">Server connection failed.</div>`;
+    });
+}
+
+function renderGithubOptions(reposList) {
+    const list = document.getElementById('githubSelectOptionsList');
+    list.innerHTML = "";
+    
+    if (reposList.length === 0) {
+        list.innerHTML = `<div style="padding: 12px; text-align: center; color: #94a3b8; font-size: 0.85rem;">No repositories found</div>`;
+        return;
+    }
+    
+    reposList.forEach(repo => {
+        const option = document.createElement('div');
+        option.style.padding = "10px 12px";
+        option.style.borderRadius = "6px";
+        option.style.fontSize = "0.88rem";
+        option.style.color = "#334155";
+        option.style.cursor = "pointer";
+        option.style.transition = "background 0.15s";
+        option.style.display = "flex";
+        option.style.justifyContent = "space-between";
+        option.style.alignItems = "center";
+        
+        option.onmouseover = () => { option.style.background = "#f1f5f9"; };
+        option.onmouseout = () => { option.style.background = "transparent"; };
+        
+        const badge = repo.private ? 
+            `<span style="background: #fee2e2; color: #ef4444; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight:600;">Private</span>` : 
+            `<span style="background: #dcfce7; color: #16a34a; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight:600;">Public</span>`;
+            
+        option.innerHTML = `
+            <span>${repo.full_name}</span>
+            ${badge}
+        `;
+        
+        option.onclick = () => {
+            selectGithubRepo(repo);
+        };
+        
+        list.appendChild(option);
+    });
+}
+
+function filterGithubOptions() {
+    const search = document.getElementById('githubSelectSearch').value.toLowerCase();
+    const filtered = githubRepos.filter(repo => repo.full_name.toLowerCase().includes(search));
+    renderGithubOptions(filtered);
+}
+
+function selectGithubRepo(repo) {
+    document.getElementById('githubSelectLabel').textContent = repo.full_name;
+    document.getElementById('githubSelectLabel').style.color = "#1e293b";
+    
+    // Choose clone url depending on visibility
+    const repoUrl = repo.private ? repo.ssh_url : repo.clone_url;
+    document.getElementById('repoUrlInput').value = repoUrl;
+    
+    // Fill branch
+    const branchInput = document.querySelector('input[name="branch"]');
+    if (branchInput) {
+        branchInput.value = repo.branch || 'main';
+    }
+    
+    // Close dropdown
+    toggleGithubDropdown();
+}
+
+// Close github dropdown if clicked outside
+document.addEventListener('click', function(event) {
+    const container = document.getElementById('githubSelectContainer');
+    if (container && !container.contains(event.target)) {
+        const dropdown = document.getElementById('githubSelectDropdown');
+        if (dropdown && dropdown.style.display === "block") {
+            dropdown.style.display = "none";
+            document.getElementById('githubSelectArrow').style.transform = "none";
+        }
+    }
+});
+
+function switchGithubModalTab(tab) {
+    const userTab = document.getElementById('tabGithubUser');
+    const adminTab = document.getElementById('tabGithubAdmin');
+    const userContent = document.getElementById('githubModalUserContent');
+    const adminContent = document.getElementById('githubModalAdminContent');
+    
+    if (tab === 'user') {
+        if (userTab) {
+            userTab.style.borderColor = "{{ branding.brand_color|default:'#ef6d19' }}";
+            userTab.style.color = "{{ branding.brand_color|default:'#ef6d19' }}";
+        }
+        if (adminTab) {
+            adminTab.style.borderColor = "transparent";
+            adminTab.style.color = "#64748b";
+        }
+        if (userContent) userContent.style.display = "flex";
+        if (adminContent) adminContent.style.display = "none";
+    } else {
+        if (adminTab) {
+            adminTab.style.borderColor = "{{ branding.brand_color|default:'#ef6d19' }}";
+            adminTab.style.color = "{{ branding.brand_color|default:'#ef6d19' }}";
+        }
+        if (userTab) {
+            userTab.style.borderColor = "transparent";
+            userTab.style.color = "#64748b";
+        }
+        if (userContent) userContent.style.display = "none";
+        if (adminContent) adminContent.style.display = "flex";
+    }
+}
+
+function saveAdminSettings() {
+    const clientId = document.getElementById('githubClientIdInput').value.trim();
+    const clientSecret = document.getElementById('githubClientSecretInput').value.trim();
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    
+    const formData = new FormData();
+    formData.append('github_client_id', clientId);
+    formData.append('github_client_secret', clientSecret);
+    
+    fetch("{% url 'git_deploy_settings' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": csrfToken
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert("Error: " + data.message);
+        }
+    })
+    .catch(err => {
+        alert("Server error saving settings.");
+    });
+}
+
+function generateGithubManifest(event, button) {
+    event.preventDefault();
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+    
+    // Dynamic App Manifest Configuration
+    const manifest = {
+        name: "OLSPanel Deploy App (" + host.split(':')[0] + ")",
+        url: protocol + "//" + host,
+        redirect_url: protocol + "//" + host + "/module/git_deploy/app/callback/",
+        callback_urls: [
+            protocol + "//" + host + "/module/git_deploy/oauth/callback/"
+        ],
+        setup_url: protocol + "//" + host + "/module/git_deploy/gui/",
+        public: true,
+        default_permissions: {
+            metadata: "read",
+            contents: "write",
+            administration: "write",
+            repository_hooks: "write"
+        }
+    };
+    
+    document.getElementById('githubManifestPayload').value = JSON.stringify(manifest);
+    button.closest('form').submit();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('github_oauth') === 'success') {
+        alert("🎉 GitHub account successfully connected via OAuth!");
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+    } else if (urlParams.get('github_setup') === 'success') {
+        alert("⚡ GitHub Application created and connected automatically!");
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+    }
+});
+</script>
+{% endblock content %}

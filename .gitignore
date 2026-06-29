@@ -1,0 +1,19 @@
+# Ignore archives and packages
+*.zip
+*.tar.gz
+
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS / Editor configuration files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

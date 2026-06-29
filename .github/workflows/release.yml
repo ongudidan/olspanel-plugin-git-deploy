@@ -1,0 +1,45 @@
+name: Build and Release OLSPanel Git Deploy Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract Version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Package Plugin Zip
+        run: |
+          zip -r git_deploy.zip git_deploy/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Version ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## OLSPanel Git Auto-Deploy Plugin (v${{ steps.get_version.outputs.VERSION }})
+
+            Frictionless GitHub integration and automatic Git repository deployment for OLSPanel.
+
+            ### Installation:
+            1. Download the `git_deploy.zip` archive attached below.
+            2. In your OLSPanel, navigate to **Admin Panel** -> **Plugins**.
+            3. Click **Upload Plugin** and select `git_deploy.zip`.
+            4. The plugin will automatically configure and register its module routes.
+          draft: false
+          prerelease: false
+          files: |
+            git_deploy.zip
