@@ -10,7 +10,15 @@ An official plugin for **OLSPanel** to automate continuous deployment of website
 - **Double click prevention and Loader states** on connection actions.
 
 ## Installation
-1. Download the `git_deploy.zip` from the latest release in this repository.
+
+### Method 1: Direct Command Line (Recommended)
+Run the following command as root on your OLSPanel server:
+```bash
+sudo install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/latest/download/git_deploy.zip
+```
+
+### Method 2: Manual Web UI
+1. Download `git_deploy.zip` from the latest release in this repository.
 2. Log into your **OLSPanel Admin Control Panel**.
 3. Go to **Plugins** -> **Install Plugin** and upload `git_deploy.zip`.
 4. Wait for the automatic reload to complete.

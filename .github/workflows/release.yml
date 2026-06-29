@@ -89,10 +89,14 @@ jobs:
             Frictionless GitHub integration and automatic Git repository deployment for OLSPanel.
 
             ### Installation:
-            1. Download the `git_deploy.zip` archive attached below.
-            2. In your OLSPanel, navigate to **Admin Panel** -> **Plugins**.
-            3. Click **Upload Plugin** and select `git_deploy.zip`.
-            4. The plugin will automatically configure and register its module routes.
+            Run this command directly on your OLSPanel server:
+            ```bash
+            sudo install_cp_plugin https://github.com/ongudidan/olspanel-plugin-git-deploy/releases/latest/download/git_deploy.zip
+            ```
+
+            Alternatively (Manual Installation):
+            1. Download `git_deploy.zip` from the Assets below.
+            2. Go to **Admin Panel** -> **Plugins** in your OLSPanel, click **Upload Plugin**, and select the downloaded file.
           draft: false
           prerelease: false
           files: |
