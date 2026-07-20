@@ -307,7 +307,8 @@ def gui_view(request):
         'github_client_id': github_client_id,
         'github_client_secret': github_client_secret,
         'github_app_slug': github_app_slug,
-        'base_template': base_template
+        'base_template': base_template,
+        'is_admin': is_admin
     })
 
 
@@ -817,10 +818,14 @@ def webhook_view(request):
 @loginadminoruser
 def manage_settings_view(request):
     """API endpoint to get or save global Git Auto-Deploy plugin configurations"""
-    user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    is_impersonating = False
+    if hasattr(request, 'admin_user') and request.admin_user:
+        if request.user and request.user.is_authenticated and request.user != request.admin_user:
+            is_impersonating = True
+            
+    is_admin = hasattr(request, 'admin_user') and request.admin_user and not is_impersonating
     
-    if not (user.is_superuser or is_admin):
+    if not is_admin:
         return JsonResponse({"status": "error", "message": "Permission denied (Admin required)"}, status=403)
         
     if request.method == 'POST':
@@ -960,10 +965,14 @@ def oauth_callback_view(request):
 @loginadminoruser
 def app_manifest_callback_view(request):
     """Callback receiver that exchanges the App Manifest code for App credentials"""
-    user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    is_impersonating = False
+    if hasattr(request, 'admin_user') and request.admin_user:
+        if request.user and request.user.is_authenticated and request.user != request.admin_user:
+            is_impersonating = True
+            
+    is_admin = hasattr(request, 'admin_user') and request.admin_user and not is_impersonating
     
-    if not (user.is_superuser or is_admin):
+    if not is_admin:
         return HttpResponse("Permission denied", status=403)
         
     code = request.GET.get('code')
@@ -1034,10 +1043,14 @@ def app_manifest_callback_view(request):
 @loginadminoruser
 def disconnect_github_view(request):
     """Disconnects the GitHub App and deletes settings from database"""
-    user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    is_impersonating = False
+    if hasattr(request, 'admin_user') and request.admin_user:
+        if request.user and request.user.is_authenticated and request.user != request.admin_user:
+            is_impersonating = True
+            
+    is_admin = hasattr(request, 'admin_user') and request.admin_user and not is_impersonating
     
-    if not (user.is_superuser or is_admin):
+    if not is_admin:
         return JsonResponse({"status": "error", "message": "Permission denied (Admin required)"}, status=403)
         
     if request.method == 'POST':
