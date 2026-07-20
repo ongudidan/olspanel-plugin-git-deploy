@@ -11,9 +11,9 @@ if [ ! -d "$BASE_DIR" ]; then
 fi
 
 # Define source and destination paths
-MODULE_SRC="$BASE_DIR/3rdparty/git_deploy/modules/git_deploy"
+MODULE_SRC="$BASE_DIR/3rdparty/git_deploy/git_deploy/modules/git_deploy"
 MODULE_DEST="$BASE_DIR/modules/git_deploy"
-ICON_SRC="$BASE_DIR/3rdparty/git_deploy/plugin_icon.svg"
+ICON_SRC="$BASE_DIR/3rdparty/git_deploy/git_deploy/plugin_icon.svg"
 ICON_DEST="$BASE_DIR/media/icon/git_deploy.svg"
 
 # Copy dynamic Django module to the system modules directory
