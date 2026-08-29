@@ -5,6 +5,7 @@ urlpatterns = [
     path('gui/', views.gui_view, name='git_deploy_gui'),
     path('webhook/', views.webhook_view, name='git_deploy_webhook'),
     path('create/', views.create_deployment_view, name='git_deploy_create'),
+    path('update/<int:dep_id>/', views.update_deployment_view, name='git_deploy_update'),
     path('delete/<int:dep_id>/', views.delete_deployment_view, name='git_deploy_delete'),
     path('logs/<int:dep_id>/', views.get_logs_view, name='git_deploy_logs'),
     path('deploy/<int:dep_id>/', views.trigger_manual_deploy_view, name='git_deploy_trigger'),

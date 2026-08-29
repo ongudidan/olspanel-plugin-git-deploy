@@ -3,340 +3,1451 @@
 {% block title %}Git Auto-Deploy Settings{% endblock title %}
 
 {% block content %}
-<div style="padding: 24px; font-family: 'Outfit', 'Inter', sans-serif; color: #1e293b;">
+<!-- Scoped Design System Styles (Loaded first to eliminate any Flash of Unstyled Content / Layout Shift) -->
+<style>
+:root {
+    --gd-brand: {{ branding.brand_color|default:'#ef6d19' }};
+    --gd-brand-light: rgba(239, 109, 25, 0.08);
+    --gd-brand-hover: #d85d10;
+    --gd-bg-card: #ffffff;
+    --gd-border: #e2e8f0;
+    --gd-border-subtle: #f1f5f9;
+    --gd-text-main: #0f172a;
+    --gd-text-body: #334155;
+    --gd-text-muted: #64748b;
+    --gd-text-subtle: #94a3b8;
+    --gd-radius: 8px;
+    --gd-radius-sm: 6px;
+    --gd-shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
+    --gd-shadow-md: 0 4px 14px -2px rgba(15, 23, 42, 0.06);
+    --gd-shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
 
-    <!-- Upper Page Header -->
-    <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-radius: 4px; border: 1px solid rgba(226, 232, 240, 0.8); display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; margin-bottom: 24px; box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08);">
-        <div>
-            <h4 style="margin: 0; font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg, #1e293b 0%, #475569 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                Git Auto-Deploy
-            </h4>
-            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">
-                Connect domains to GitHub repositories and automatically deploy on every push
-            </p>
+.git-deploy-page {
+    padding: 0 0 24px 0;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--gd-text-body);
+}
+
+/* Header Card */
+.gd-header-card {
+    background: #ffffff;
+    border: 1px solid var(--gd-border);
+    border-radius: var(--gd-radius);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--gd-shadow-sm);
+    flex-wrap: wrap;
+    width: 100%;
+    box-sizing: border-box;
+}
+.gd-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.gd-header-icon-wrap {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--gd-radius-sm);
+    background: var(--gd-brand-light);
+    color: var(--gd-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.gd-page-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--gd-text-main);
+    letter-spacing: -0.01em;
+}
+.gd-page-desc {
+    margin: 2px 0 0;
+    font-size: 0.8rem;
+    color: var(--gd-text-muted);
+}
+.gd-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Section Header */
+.gd-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 12px;
+    flex-wrap: wrap;
+    width: 100%;
+    box-sizing: border-box;
+}
+.gd-section-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.gd-section-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--gd-text-main);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.gd-count-pill {
+    background: var(--gd-border-subtle);
+    color: var(--gd-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 20px;
+}
+.gd-section-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.gd-search-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid var(--gd-border);
+    border-radius: var(--gd-radius-sm);
+    padding: 4px 10px;
+    width: 200px;
+    transition: all 0.18s;
+}
+.gd-search-mini:focus-within {
+    border-color: var(--gd-brand);
+    box-shadow: 0 0 0 2px var(--gd-brand-light);
+}
+.gd-search-mini input {
+    border: none;
+    outline: none;
+    font-size: 0.8rem;
+    width: 100%;
+    color: var(--gd-text-main);
+    background: transparent;
+}
+
+/* Spinner */
+.gd-spin {
+    animation: gdSpin 0.75s linear infinite;
+}
+@keyframes gdSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Buttons */
+.gd-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--gd-radius-sm);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    user-select: none;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+.gd-btn-primary {
+    background: var(--gd-brand);
+    color: #ffffff;
+    border-color: var(--gd-brand);
+}
+.gd-btn-primary:hover {
+    background: var(--gd-brand-hover);
+    border-color: var(--gd-brand-hover);
+    color: #ffffff;
+}
+.gd-btn-outline {
+    background: #ffffff;
+    color: var(--gd-text-body);
+    border-color: #d1d5db;
+}
+.gd-btn-outline:hover {
+    background: var(--gd-border-subtle);
+    border-color: #9ca3af;
+    color: var(--gd-text-main);
+}
+.gd-btn-outline-danger {
+    background: #ffffff;
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+.gd-btn-outline-danger:hover {
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+.gd-btn-danger {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+}
+.gd-btn-danger:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+.gd-btn-github {
+    background: #24292f;
+    color: #ffffff;
+    border-color: #24292f;
+}
+.gd-btn-github:hover {
+    background: #0f1419;
+    color: #ffffff;
+}
+.gd-btn-compact {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    gap: 4px;
+}
+.gd-btn-icon-danger {
+    background: transparent;
+    color: var(--gd-text-subtle);
+    border: 1px solid transparent;
+    padding: 4px 6px;
+    border-radius: var(--gd-radius-sm);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.gd-btn-icon-danger:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+.gd-btn-inline-edit {
+    background: transparent;
+    border: none;
+    color: var(--gd-text-subtle);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    opacity: 0.65;
+}
+.gd-btn-inline-edit:hover {
+    background: #f1f5f9;
+    color: var(--gd-brand);
+    opacity: 1;
+}
+
+/* Empty State Card */
+.gd-empty-card {
+    background: #ffffff;
+    border: 1.5px dashed var(--gd-border);
+    border-radius: var(--gd-radius);
+    padding: 40px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+.gd-empty-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gd-border-subtle);
+    color: var(--gd-text-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+.gd-empty-title {
+    margin: 0 0 4px;
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: var(--gd-text-main);
+}
+.gd-empty-desc {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--gd-text-muted);
+    max-width: 380px;
+}
+
+/* ULTRA-COMPACT TABLE LAYOUT */
+.gd-table-card {
+    background: #ffffff;
+    border: 1px solid var(--gd-border);
+    border-radius: var(--gd-radius);
+    box-shadow: var(--gd-shadow-sm);
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+}
+.gd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    color: var(--gd-text-body);
+}
+.gd-table thead th {
+    background: #f8fafc;
+    color: var(--gd-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--gd-border);
+    white-space: nowrap;
+    text-align: left;
+}
+.gd-table tbody tr {
+    border-bottom: 1px solid var(--gd-border-subtle);
+    transition: background 0.12s;
+}
+.gd-table tbody tr:last-child {
+    border-bottom: none;
+}
+.gd-table tbody tr:hover {
+    background: #f8fafc;
+}
+.gd-table tbody td {
+    padding: 7px 14px;
+    vertical-align: middle;
+}
+
+/* Cells */
+.gd-domain-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+.gd-domain-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--gd-text-main);
+}
+.gd-badge-auto {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.gd-badge-manual {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #ffffff;
+    color: var(--gd-text-body);
+    border: 1px solid #d1d5db;
+    cursor: pointer;
+    transition: all 0.12s;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.gd-badge-manual:hover {
+    background: #f1f5f9;
+    color: var(--gd-brand);
+}
+
+.gd-domain-repo-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.gd-domain-line {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+}
+.gd-repo-sub-line {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+.gd-repo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #475569;
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 0.76rem;
+    white-space: nowrap;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    opacity: 0.88;
+}
+.gd-repo-link:hover {
+    color: #2563eb;
+    text-decoration: underline;
+    opacity: 1;
+}
+.gd-branch-pill {
+    background: #f1f5f9;
+    color: var(--gd-text-body);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-family: monospace;
+    font-size: 0.70rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: 1px solid var(--gd-border);
+}
+
+.gd-path-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+.gd-path-code {
+    color: var(--gd-text-body);
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    word-break: normal;
+    background: #f8fafc;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--gd-border);
+    display: inline-block;
+}
+
+.gd-actions-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: flex-end;
+    white-space: nowrap;
+}
+
+/* MODALS SYSTEM (NO BLUR, SLEEK & PROFESSIONAL) */
+.gd-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.gd-modal-box {
+    background: #ffffff;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    box-shadow: var(--gd-shadow-lg);
+    overflow: hidden;
+    animation: gdModalIn 0.18s ease-out;
+}
+@keyframes gdModalIn {
+    from { opacity: 0; transform: scale(0.98) translateY(4px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.gd-modal-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--gd-border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+}
+.gd-modal-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--gd-text-main);
+}
+.gd-modal-close {
+    background: transparent;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--gd-text-subtle);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+.gd-modal-close:hover {
+    background: var(--gd-border-subtle);
+    color: var(--gd-text-main);
+}
+
+.gd-modal-body {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+.gd-modal-footer {
+    padding: 12px 18px;
+    border-top: 1px solid var(--gd-border-subtle);
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Modal Tabs */
+.gd-modal-tabs {
+    display: flex;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--gd-border);
+    padding: 0 18px;
+    gap: 16px;
+}
+.gd-modal-tab-btn {
+    background: transparent;
+    border: none;
+    padding: 9px 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--gd-text-muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.gd-modal-tab-btn.active {
+    color: var(--gd-brand);
+    border-bottom-color: var(--gd-brand);
+}
+
+/* Form Controls */
+.gd-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.gd-subgroup {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.gd-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+    display: block;
+}
+.gd-input {
+    width: 100%;
+    height: 38px;
+    padding: 0 11px;
+    border-radius: var(--gd-radius-sm);
+    border: 1px solid #d1d5db;
+    outline: none;
+    font-size: 0.85rem;
+    color: var(--gd-text-main);
+    background: #ffffff;
+    transition: all 0.18s;
+    box-sizing: border-box;
+}
+.gd-input:focus {
+    border-color: var(--gd-brand);
+    box-shadow: 0 0 0 2px var(--gd-brand-light);
+}
+.gd-code-font {
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.78rem;
+}
+.gd-help-lead {
+    font-size: 0.82rem;
+    color: var(--gd-text-body);
+    line-height: 1.4;
+    margin: 0;
+}
+.gd-input-prefix-wrap {
+    position: relative;
+    width: 100%;
+}
+.gd-input-prefix {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gd-text-subtle);
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+
+/* Segmented Control Tabs */
+.gd-segmented-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: var(--gd-radius-sm);
+}
+.gd-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.79rem;
+    font-weight: 600;
+    color: var(--gd-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.15s;
+}
+.gd-tab-btn.active {
+    background: #ffffff;
+    color: var(--gd-text-main);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Toggle / Checkbox Card */
+.gd-toggle-card {
+    background: #f8fafc;
+    border: 1px solid var(--gd-border);
+    border-radius: var(--gd-radius-sm);
+    padding: 8px 10px;
+    margin-top: 4px;
+}
+.gd-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    margin: 0;
+}
+.gd-checkbox-label input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: var(--gd-brand);
+    margin: 0;
+}
+.gd-checkbox-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gd-text-main);
+}
+
+/* Custom Searchable Select */
+.custom-select-container {
+    position: relative;
+    width: 100%;
+}
+.custom-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 38px;
+    padding: 0 11px;
+    border-radius: var(--gd-radius-sm);
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    font-size: 0.85rem;
+    color: var(--gd-text-body);
+    cursor: pointer;
+    transition: all 0.18s;
+    user-select: none;
+}
+.custom-select-trigger:hover {
+    border-color: #9ca3af;
+}
+.custom-select-dropdown {
+    display: none;
+    position: absolute;
+    top: 42px;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--gd-border);
+    border-radius: var(--gd-radius-sm);
+    box-shadow: var(--gd-shadow-lg);
+    z-index: 2100;
+    overflow: hidden;
+}
+.gd-dropdown-search-wrap {
+    padding: 7px 9px;
+    border-bottom: 1px solid var(--gd-border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: #f8fafc;
+}
+.gd-dropdown-search-wrap input {
+    width: 100%;
+    border: none;
+    outline: none;
+    font-size: 0.82rem;
+    color: var(--gd-text-main);
+    background: transparent;
+}
+.gd-options-list {
+    max-height: 170px;
+    overflow-y: auto;
+    padding: 3px;
+}
+.custom-select-option {
+    padding: 6px 9px;
+    border-radius: 4px;
+    font-size: 0.81rem;
+    color: var(--gd-text-body);
+    cursor: pointer;
+    transition: background 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.custom-select-option:hover {
+    background: var(--gd-border-subtle);
+    color: var(--gd-text-main);
+}
+.gd-no-options, .gd-loading-box {
+    padding: 10px;
+    text-align: center;
+    color: var(--gd-text-muted);
+    font-size: 0.78rem;
+}
+
+/* Copy Input Group */
+.gd-copy-input-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.gd-copy-input-group .gd-input {
+    flex: 1;
+}
+
+/* Alerts & Status Cards in Modals */
+.gd-alert {
+    border-radius: var(--gd-radius-sm);
+    padding: 9px 11px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+.gd-alert-danger {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+.gd-alert-warning {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+}
+.gd-alert-success {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+.gd-alert-info {
+    background: #f8fafc;
+    border: 1px solid var(--gd-border);
+    border-left: 3px solid var(--gd-brand);
+    color: var(--gd-text-body);
+}
+
+.gd-connected-card, .gd-disconnected-card {
+    text-align: center;
+    padding: 8px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.gd-connected-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #16a34a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+.gd-github-hero-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #f8fafc;
+    border: 1px solid var(--gd-border);
+    color: #24292f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+.gd-connected-title, .gd-disconnected-title {
+    margin: 0 0 3px;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--gd-text-main);
+}
+.gd-connected-desc, .gd-disconnected-desc {
+    margin: 0 0 14px;
+    font-size: 0.8rem;
+    color: var(--gd-text-muted);
+    max-width: 340px;
+    line-height: 1.4;
+}
+.gd-btn-group-center {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.gd-info-callout {
+    background: #f8fafc;
+    border: 1px solid var(--gd-border);
+    border-radius: var(--gd-radius-sm);
+    padding: 9px 11px;
+    font-size: 0.76rem;
+    color: var(--gd-text-muted);
+}
+.gd-info-callout h6 {
+    margin: 0 0 3px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--gd-text-body);
+}
+.gd-link-highlight {
+    color: var(--gd-brand);
+    font-weight: 600;
+    text-decoration: none;
+}
+.gd-link-highlight:hover {
+    text-decoration: underline;
+}
+
+/* DRAWER / SLIDE-OVER (NO BLUR) */
+.gd-drawer-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 2000;
+    justify-content: flex-end;
+}
+.gd-drawer-panel {
+    background: #ffffff;
+    width: 100%;
+    max-width: 620px;
+    height: 100vh;
+    border-left: 1px solid var(--gd-border);
+    box-shadow: -6px 0 20px 0 rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    animation: gdDrawerIn 0.22s ease-out;
+}
+@keyframes gdDrawerIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+.gd-drawer-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--gd-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    flex-shrink: 0;
+}
+.gd-drawer-title {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--gd-text-main);
+}
+.gd-terminal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    display: inline-block;
+}
+.gd-drawer-body {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #f8fafc;
+}
+
+/* Log Accordion Item */
+.log-accordion {
+    border: 1px solid var(--gd-border);
+    border-radius: var(--gd-radius-sm);
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: var(--gd-shadow-sm);
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+.log-accordion:hover {
+    border-color: #cbd5e1;
+}
+.log-header {
+    padding: 12px 14px;
+    background: #ffffff;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: background 0.12s;
+    gap: 12px;
+}
+.log-header:hover {
+    background: #f8fafc;
+}
+.log-header-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+.log-status-dot-wrap {
+    flex-shrink: 0;
+    padding-top: 3px;
+}
+.log-header-text {
+    min-width: 0;
+    flex: 1;
+}
+.log-commit-title {
+    font-weight: 600;
+    font-size: 0.84rem;
+    color: var(--gd-text-main);
+    line-height: 1.3;
+    word-break: break-word;
+}
+.log-meta-line {
+    font-size: 0.72rem;
+    color: var(--gd-text-muted);
+    margin-top: 3px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.log-hash-badge {
+    font-size: 0.7rem;
+    font-family: monospace;
+    background: #f1f5f9;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: var(--gd-text-body);
+    font-weight: 600;
+}
+.log-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.log-status-text {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.log-arrow {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    transition: transform 0.15s;
+}
+.log-body {
+    padding: 14px;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.76rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    display: none;
+    border-top: 1px solid #1e293b;
+    line-height: 1.5;
+    max-height: 450px;
+    overflow-y: auto;
+}
+</style>
+
+<div class="git-deploy-page">
+
+    <!-- Page Header Bar -->
+    <div class="gd-header-card">
+        <div class="gd-header-info">
+            <div class="gd-header-icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="18" r="3"></circle>
+                    <circle cx="6" cy="6" r="3"></circle>
+                    <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+                    <line x1="6" y1="9" x2="6" y2="21"></line>
+                </svg>
+            </div>
+            <div>
+                <h4 class="gd-page-title">Git Auto-Deploy</h4>
+                <p class="gd-page-desc">Automate production deployments on every GitHub or Git push</p>
+            </div>
         </div>
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <button onclick="openModal('githubTokenModal')" class="btn btn-outline-secondary btn-sm" style="text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
-                ⚙ {% if has_github_token %}GitHub Connected{% else %}Connect GitHub{% endif %}
+        <div class="gd-header-actions">
+            <button onclick="openModal('githubTokenModal')" class="gd-btn gd-btn-outline" title="Configure GitHub Account or GitHub App">
+                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                <span>{% if has_github_token %}GitHub Connected{% else %}Connect GitHub{% endif %}</span>
             </button>
-            <button onclick="openModal('addConnectionModal')" class="btn btn-pill btn-success btn-sm" style="text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
-                <span>+</span> Connect Repository
+            <button onclick="openModal('addConnectionModal')" class="gd-btn gd-btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Connect Repository</span>
             </button>
         </div>
     </div>
 
-    <!-- Active Deployments Section -->
-    <h5 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; color: #334155;">Active Connections</h5>
-
-    {% if not deployments %}
-    <div style="background: #fff; border-radius: 4px; border: 1.5px dashed #cbd5e1; padding: 50px 20px; text-align: center; color: #64748b;">
-        <span style="font-size: 3rem; display: block; margin-bottom: 16px;">📂</span>
-        <h6 style="margin: 0 0 8px; font-size: 1rem; font-weight: 600; color: #334155;">No connected repositories found</h6>
-        <p style="margin: 0; font-size: 0.85rem; color: #94a3b8;">Link a domain or subdomain to start automatically publishing updates on git push.</p>
-    </div>
-    {% else %}
-    <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
-        {% for dep in deployments %}
-        <div style="background: #fff; border-radius: 4px; border: 1px solid #e2e8f0; padding: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.02), 0 4px 6px -4px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 12px;">
-            
-            <!-- Connection Header -->
-            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                    <h6 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;">
-                        {{ dep.domain }}
-                    </h6>
-                    <code style="font-size: 0.75rem; color: #64748b; background: #f8fafc; padding: 2px 6px; border-radius: 4px;">
-                        {{ dep.deploy_path }}
-                    </code>
-                </div>
-                <div id="statusBadge_{{ dep.id }}">
-                    <!-- Status Badge -->
-                    {% if dep.last_status == 'success' %}
-                        <span style="background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Success</span>
-                    {% elif dep.last_status == 'failed' %}
-                        <span style="background: #fee2e2; color: #b91c1c; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Failed</span>
-                    {% elif dep.last_status == 'pending' %}
-                        <span style="background: #fef3c7; color: #d97706; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Deploying</span>
-                    {% else %}
-                        <span style="background: #e2e8f0; color: #475569; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">No Deploys</span>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Repository Details & Commit info in a tight block -->
-            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem;">
-                <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
-                    <div>
-                        <span style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; margin-right: 4px;">Repository</span>
-                        <a href="{{ dep.repo_url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: 500; word-break: break-all;">
-                            {{ dep.repo_url }}
-                        </a>
-                    </div>
-                    <div>
-                        <span style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; margin-right: 4px;">Branch</span>
-                        <span style="font-family: monospace; font-weight: 600; color: #334155; background: #f1f5f9; padding: 1px 5px; border-radius: 4px;">
-                            {{ dep.branch }}
-                        </span>
-                    </div>
-                </div>
-
-                <div id="lastDeployDetails_{{ dep.id }}" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; {% if dep.last_commit == '-' or not dep.last_commit %}display: none;{% endif %}">
-                    <span style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; font-weight: 600;">Last Commit:</span>
-                    <span style="color: #334155; font-weight: 500; font-size: 0.82rem;">
-                        {{ dep.last_commit }}
-                    </span>
-                    <code style="font-size: 0.75rem; font-weight: 700; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; {% if not dep.last_hash %}display: none;{% endif %}">
-                        {{ dep.last_hash|default:'' }}
-                    </code>
-                </div>
-            </div>
-
-            <!-- Credentials & Setup Info -->
-            {% if not dep.auto_configured %}
-            <div style="background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;">
-                <!-- Webhook configuration -->
-                <div>
-                    <span style="font-size: 0.78rem; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;">Webhook URL</span>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" readonly value="{{ webhook_url }}?secret={{ dep.webhook_secret }}" style="flex: 1; font-size: 0.78rem; font-family: monospace; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155;" id="webhookUrl_{{ dep.id }}">
-                        <button onclick="copyToClipboard('webhookUrl_{{ dep.id }}')" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 0.78rem; cursor: pointer; font-weight: 600; color: #475569; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9';" onmouseout="this.style.background='#fff';">Copy</button>
-                    </div>
-                </div>
-
-                <!-- Private deploy key if present -->
-                {% if dep.ssh_public_key %}
-                <div style="border-top: 1px dashed #e2e8f0; padding-top: 8px;">
-                    <span style="font-size: 0.78rem; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;">Deploy SSH Key</span>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" readonly value="{{ dep.ssh_public_key }}" style="flex: 1; font-size: 0.78rem; font-family: monospace; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155;" id="publicKey_{{ dep.id }}">
-                        <button onclick="copyToClipboard('publicKey_{{ dep.id }}')" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 0.78rem; cursor: pointer; font-weight: 600; color: #475569; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9';" onmouseout="this.style.background='#fff';">Copy</button>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-            {% else %}
-            <!-- Auto-configured badge -->
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #166534; font-size: 0.82rem; font-weight: 500;">
-                <span>Webhook and Deploy Key are automatically managed on GitHub by OLSPanel.</span>
+    <!-- Active Deployments Section Header -->
+    <div class="gd-section-header">
+        <div class="gd-section-title-wrap">
+            <h5 class="gd-section-title">Active Connections</h5>
+            <span class="gd-count-pill" id="connectionsCountPill">{{ deployments|length }}</span>
+        </div>
+        <div class="gd-section-actions">
+            {% if deployments %}
+            <div class="gd-search-mini">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="filterConnectionsInput" placeholder="Filter connections..." oninput="filterConnections()">
             </div>
             {% endif %}
-
-            <!-- Action buttons -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                <button onclick="confirmDelete({{ dep.id }})" class="btn btn-outline-danger btn-sm" style="text-transform: none;">
-                    Delete Link
-                </button>
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="openLogsModal({{ dep.id }})" class="btn btn-outline-secondary btn-sm" style="text-transform: none;">
-                        View Logs
-                    </button>
-                    <button onclick="triggerManualDeploy({{ dep.id }}, this)" class="btn btn-primary btn-sm" style="text-transform: none;">
-                        Deploy Now
-                    </button>
-                </div>
-            </div>
-
+            <button type="button" id="btnRefreshTable" onclick="refreshDeploymentsTable(this)" class="gd-btn gd-btn-outline gd-btn-compact" title="Refresh connections table">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                <span>Refresh</span>
+            </button>
         </div>
-        {% endfor %}
     </div>
-    {% endif %}
 
-    <!-- Create Deployment Connection Modal -->
-    <div id="addConnectionModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: center; justify-content: center; padding: 16px;">
-        <div style="background: #fff; border-radius: 4px; max-width: 550px; width: 100%; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); overflow: hidden; animation: modalIn 0.3s ease;">
+    <div id="tableContainerWrapper">
+        {% if not deployments %}
+        <!-- Empty State -->
+        <div class="gd-empty-card">
+            <div class="gd-empty-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <h6 class="gd-empty-title">No connected repositories found</h6>
+            <p class="gd-empty-desc">Link a domain to a Git repository to enable automated deployments on push.</p>
+            <button onclick="openModal('addConnectionModal')" class="gd-btn gd-btn-primary" style="margin-top: 14px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Connect First Repository</span>
+            </button>
+        </div>
+        {% else %}
+        <!-- Ultra-Sleek Compact Table Layout with Numbering -->
+        <div class="gd-table-card">
+            <div class="table-responsive">
+                <table class="gd-table" id="deploymentsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%; text-align: center;">#</th>
+                            <th style="width: 34%;">Domain & Repository</th>
+                            <th style="width: 44%;">Deploy Path</th>
+                            <th style="width: 18%; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dep in deployments %}
+                        <tr id="depRow_{{ dep.id }}" data-domain="{{ dep.domain|lower }}" data-repo="{{ dep.repo_url|lower }}">
+                            
+                            <!-- Col 0: Row Numbering -->
+                            <td style="text-align: center; color: var(--gd-text-subtle); font-weight: 600; font-size: 0.75rem;">
+                                {{ forloop.counter }}
+                            </td>
+
+                            <!-- Col 1: Domain & Repository (Stacked) -->
+                            <td>
+                                <div class="gd-domain-repo-cell">
+                                    <div class="gd-domain-line">
+                                        <span class="gd-domain-name" title="{{ dep.domain }}">{{ dep.domain }}</span>
+                                        <span class="gd-branch-pill" title="Target deploy branch">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                                            {{ dep.branch }}
+                                        </span>
+                                        {% if dep.auto_configured %}
+                                        <span class="gd-badge-auto" title="Auto-managed on GitHub">
+                                            <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                            Auto
+                                        </span>
+                                        {% else %}
+                                        <button type="button" onclick="openWebhookModal('{{ dep.id }}', '{{ dep.domain|escapejs }}', '{{ webhook_url }}?secret={{ dep.webhook_secret }}', '{{ dep.ssh_public_key|default:''|escapejs }}')" class="gd-badge-manual" title="View Webhook URL & Deploy Key">
+                                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                            Keys
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div class="gd-repo-sub-line">
+                                        <a href="{{ dep.repo_url }}" target="_blank" class="gd-repo-link" title="{{ dep.repo_url }}">
+                                            <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                            <span>{{ dep.repo_url }}</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Col 2: Deploy Path -->
+                            <td>
+                                <div class="gd-path-wrapper">
+                                    <code class="gd-path-code" title="{{ dep.deploy_path }}">{{ dep.deploy_path }}</code>
+                                    <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.deploy_path|escapejs }}')" class="gd-btn-inline-edit" title="Click to edit deploy path">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    </button>
+                                </div>
+                            </td>
+
+                            <!-- Col 4: Actions -->
+                            <td style="text-align: right;">
+                                <div class="gd-actions-cell">
+                                    <button onclick="triggerManualDeploy({{ dep.id }}, this)" class="gd-btn gd-btn-primary gd-btn-compact" title="Run manual deploy now">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                        <span>Deploy</span>
+                                    </button>
+                                    <button onclick="openLogsModal({{ dep.id }})" class="gd-btn gd-btn-outline gd-btn-compact" title="View deployment history and logs">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                        <span>Logs</span>
+                                    </button>
+                                    <button onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.deploy_path|escapejs }}')" class="gd-btn gd-btn-outline gd-btn-compact" title="Edit deployment directory path or branch">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button onclick="confirmDelete({{ dep.id }})" class="gd-btn gd-btn-icon-danger" title="Delete connection link">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                    </button>
+                                </div>
+                            </td>
+
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- MODAL 1: Connect Repository Modal -->
+    <div id="addConnectionModal" class="gd-modal-backdrop" onclick="handleBackdropClick(event, 'addConnectionModal')">
+        <div class="gd-modal-box">
             
-            <div style="padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
-                <h5 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">Connect Repository</h5>
-                <button onclick="closeModal('addConnectionModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; transition: color 0.2s;" onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'">×</button>
+            <div class="gd-modal-header">
+                <h5 class="gd-modal-title">Connect Repository</h5>
+                <button onclick="closeModal('addConnectionModal')" class="gd-modal-close" aria-label="Close">✕</button>
             </div>
 
-            <form id="createDeploymentForm" style="padding: 24px; display: flex; flex-direction: column; gap: 20px;" onsubmit="submitCreateForm(event)">
+            <form id="createDeploymentForm" onsubmit="submitCreateForm(event)">
                 {% csrf_token %}
-                <div id="createFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 12px; font-size: 0.85rem; color: #b91c1c; line-height: 1.4; text-align: left;"></div>
-                
-                <!-- Domain selection -->
-                <div>
-                    <label style="display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Select Domain / Subdomain</label>
-                    <div class="custom-select-container" id="domainSelectContainer" style="position: relative; width: 100%;">
-                        <!-- Hidden select input to submit value with form -->
-                        <select name="domain_id" id="hiddenDomainSelect" required style="display: none;">
-                            <option value="" disabled selected>-- Choose a domain --</option>
-                            {% for dom in domains %}
-                                <option value="{{ dom.id }}">{{ dom.domain }}</option>
-                            {% endfor %}
-                        </select>
-                        
-                        <!-- Trigger Button -->
-                        <div class="custom-select-trigger" onclick="toggleCustomDropdown()" style="display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 16px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.9rem; color: #64748b; cursor: pointer; transition: all 0.2s; user-select: none;">
-                            <span id="customSelectLabel">-- Choose a domain --</span>
-                            <span style="font-size: 0.75rem; transition: transform 0.2s;" id="customSelectArrow">▼</span>
-                        </div>
-                        
-                        <!-- Dropdown Menu -->
-                        <div class="custom-select-dropdown" id="customSelectDropdown" style="display: none; position: absolute; top: 48px; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 2100; overflow: hidden;">
-                            <!-- Search Input -->
-                            <div style="padding: 10px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px;">
-                                <span style="color: #94a3b8; font-size: 0.9rem;">🔍</span>
-                                <input type="text" id="customSelectSearch" placeholder="Search domains..." oninput="filterCustomOptions()" style="width: 100%; border: none; outline: none; font-size: 0.9rem; color: #1e293b;">
-                            </div>
-                            <!-- Options List -->
-                            <div id="customSelectOptionsList" style="max-height: 180px; overflow-y: auto; padding: 4px;">
+                <div class="gd-modal-body">
+                    <div id="createFormError" class="gd-alert gd-alert-danger" style="display: none;"></div>
+                    
+                    <!-- Domain Selection -->
+                    <div class="gd-form-group">
+                        <label class="gd-label">Target Domain / Subdomain</label>
+                        <div class="custom-select-container" id="domainSelectContainer">
+                            <select name="domain_id" id="hiddenDomainSelect" required style="display: none;">
+                                <option value="" disabled selected>-- Choose a domain --</option>
                                 {% for dom in domains %}
-                                    <div class="custom-select-option" data-value="{{ dom.id }}" onclick="selectCustomOption('{{ dom.id }}', '{{ dom.domain }}')" style="padding: 8px 12px; border-radius: 4px; font-size: 0.88rem; color: #334155; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#f1f5f9';" onmouseout="this.style.background='transparent';">
-                                        {{ dom.domain }}
-                                    </div>
+                                    <option value="{{ dom.id }}" data-path="{{ dom.path }}">{{ dom.domain }}</option>
                                 {% endfor %}
-                                <div id="noDomainsFound" style="display: none; padding: 12px; text-align: center; color: #94a3b8; font-size: 0.85rem;">
-                                    No domains found
+                            </select>
+                            
+                            <div class="custom-select-trigger" onclick="toggleCustomDropdown()">
+                                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                    <span id="customSelectLabel">-- Choose a domain --</span>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Repository connection inputs -->
-                <div>
-                    {% if has_github_token %}
-                    <!-- Tab Selector for repository selection method -->
-                    <div style="display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 12px; gap: 16px; font-size: 0.85rem; font-weight: 600; color: #64748b;">
-                        <span id="tabSelectRepo" onclick="switchRepoTab('select')" style="padding: 8px 0; border-bottom: 2px solid {{ branding.brand_color|default:'#ef6d19' }}; color: {{ branding.brand_color|default:'#ef6d19' }}; cursor: pointer; user-select: none;">
-                            Select Repository
-                        </span>
-                        <span id="tabManualRepo" onclick="switchRepoTab('manual')" style="padding: 8px 0; border-bottom: 2px solid transparent; cursor: pointer; user-select: none;">
-                            Custom Repository URL
-                        </span>
-                    </div>
-                    {% endif %}
-
-                    <!-- Tab 1: Fetch Repos Select Dropdown -->
-                    {% if has_github_token %}
-                    <div id="githubSelectRepoContainer" style="display: block; margin-bottom: 12px;">
-                        <label style="display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Select GitHub Repository</label>
-                        <div class="custom-select-container" id="githubSelectContainer" style="position: relative; width: 100%;">
-                            <div class="custom-select-trigger" id="githubSelectTrigger" onclick="toggleGithubDropdown()" style="display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 16px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.9rem; color: #64748b; cursor: pointer; transition: all 0.2s; user-select: none;">
-                                <span id="githubSelectLabel">Click to load repositories...</span>
-                                <span style="font-size: 0.75rem; transition: transform 0.2s;" id="githubSelectArrow">▼</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="customSelectArrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </div>
                             
-                            <div class="custom-select-dropdown" id="githubSelectDropdown" style="display: none; position: absolute; top: 48px; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 2100; overflow: hidden;">
-                                <div style="padding: 10px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px;">
-                                    <span style="color: #94a3b8; font-size: 0.9rem;">🔍</span>
-                                    <input type="text" id="githubSelectSearch" placeholder="Search your repos..." oninput="filterGithubOptions()" style="width: 100%; border: none; outline: none; font-size: 0.9rem; color: #1e293b;">
+                            <div class="custom-select-dropdown" id="customSelectDropdown">
+                                <div class="gd-dropdown-search-wrap">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    <input type="text" id="customSelectSearch" placeholder="Search domains..." oninput="filterCustomOptions()">
                                 </div>
-                                <div id="githubSelectOptionsList" style="max-height: 180px; overflow-y: auto; padding: 4px;">
-                                    <div style="padding: 12px; text-align: center; color: #64748b; font-size: 0.85rem;" id="githubReposLoading">
-                                        Loading repositories...
+                                <div id="customSelectOptionsList" class="gd-options-list">
+                                    {% for dom in domains %}
+                                        <div class="custom-select-option" data-value="{{ dom.id }}" data-path="{{ dom.path }}" onclick="selectCustomOption('{{ dom.id }}', '{{ dom.domain|escapejs }}', '{{ dom.path|escapejs }}')">
+                                            {{ dom.domain }}
+                                        </div>
+                                    {% endfor %}
+                                    <div id="noDomainsFound" class="gd-no-options" style="display: none;">
+                                        No matching domains found
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    {% endif %}
 
-                    <!-- Tab 2: Manual text Input -->
-                    <div id="manualRepoUrlContainer" style="display: {% if has_github_token %}none{% else %}block{% endif %}; margin-bottom: 12px;">
-                        <label style="display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Git Repository URL</label>
-                        <input type="text" name="repo_url" id="repoUrlInput" {% if not has_github_token %}required{% endif %} placeholder="e.g. git@github.com:username/repo.git" style="width: 100%; height: 44px; padding: 0 12px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; font-size: 0.9rem; color: #1e293b;">
-                        <small style="color: #94a3b8; font-size: 0.75rem; display: block; margin-top: 4px;">Use SSH format (git@...) for private repositories.</small>
-                    </div>
-
-                    <!-- Auto-configure Webhooks on GitHub checkbox -->
-                    {% if has_github_token %}
-                    <div id="autoConfigureContainer" style="display: block; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 12px; margin-top: 14px; margin-bottom: 14px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" name="auto_configure" id="autoConfigureCheckbox" checked style="width: 18px; height: 18px; cursor: pointer; margin: 0;">
-                            <label for="autoConfigureCheckbox" style="font-size: 0.85rem; color: #475569; font-weight: 600; cursor: pointer; user-select: none;">
-                                Auto-configure Webhook & Deploy Key on GitHub
-                            </label>
+                    <!-- Deployment Directory Path Input -->
+                    <div class="gd-form-group">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <label class="gd-label">Deployment Directory Path</label>
+                            <span style="font-size: 0.72rem; color: var(--gd-text-muted);">Editable root folder</span>
+                        </div>
+                        <div class="gd-input-prefix-wrap">
+                            <span class="gd-input-prefix">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            </span>
+                            <input type="text" name="deploy_path" id="deployPathInput" required placeholder="/home/username/public_html" class="gd-input gd-code-font" style="padding-left: 34px;">
                         </div>
                     </div>
-                    {% endif %}
-                </div>
 
-                <!-- Branch Stacked -->
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <div>
-                        <label style="display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Target Branch</label>
-                        <input type="text" name="branch" value="main" placeholder="main" style="width: 100%; height: 44px; padding: 0 12px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; font-size: 0.9rem; color: #1e293b;">
+                    <!-- Repository Selection Source -->
+                    <div class="gd-form-group">
+                        {% if has_github_token %}
+                        <!-- Segmented Switcher -->
+                        <div class="gd-segmented-tabs">
+                            <button type="button" id="tabSelectRepo" class="gd-tab-btn active" onclick="switchRepoTab('select')">
+                                <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                GitHub Repositories
+                            </button>
+                            <button type="button" id="tabManualRepo" class="gd-tab-btn" onclick="switchRepoTab('manual')">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                Custom Git URL
+                            </button>
+                        </div>
+                        {% endif %}
+
+                        <!-- GitHub Repo Picker -->
+                        {% if has_github_token %}
+                        <div id="githubSelectRepoContainer" class="gd-subgroup">
+                            <label class="gd-label">Choose GitHub Repository</label>
+                            <div class="custom-select-container" id="githubSelectContainer">
+                                <div class="custom-select-trigger" id="githubSelectTrigger" onclick="toggleGithubDropdown()">
+                                    <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                        <span id="githubSelectLabel">Click to select repository...</span>
+                                    </div>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="githubSelectArrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+                                
+                                <div class="custom-select-dropdown" id="githubSelectDropdown">
+                                    <div class="gd-dropdown-search-wrap">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                        <input type="text" id="githubSelectSearch" placeholder="Search repositories..." oninput="filterGithubOptions()">
+                                    </div>
+                                    <div id="githubSelectOptionsList" class="gd-options-list">
+                                        <div class="gd-loading-box" id="githubReposLoading">Loading repositories...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Manual Git URL Input -->
+                        <div id="manualRepoUrlContainer" class="gd-subgroup" style="display: {% if has_github_token %}none{% else %}block{% endif %};">
+                            <label class="gd-label">Git Repository URL</label>
+                            <input type="text" name="repo_url" id="repoUrlInput" {% if not has_github_token %}required{% endif %} placeholder="e.g. git@github.com:username/repo.git or https://..." class="gd-input">
+                        </div>
+
+                        <!-- Auto-configure checkbox -->
+                        {% if has_github_token %}
+                        <div id="autoConfigureContainer" class="gd-toggle-card">
+                            <label class="gd-checkbox-label">
+                                <input type="checkbox" name="auto_configure" id="autoConfigureCheckbox" checked>
+                                <span class="gd-checkbox-title">Auto-configure Webhook & Deploy Key on GitHub</span>
+                            </label>
+                        </div>
+                        {% endif %}
                     </div>
+
+                    <!-- Branch Input -->
+                    <div class="gd-form-group">
+                        <label class="gd-label">Target Deploy Branch</label>
+                        <div class="gd-input-prefix-wrap">
+                            <span class="gd-input-prefix">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                            </span>
+                            <input type="text" name="branch" value="main" placeholder="main" class="gd-input" style="padding-left: 34px;">
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Footer buttons -->
-                <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
-                    <button type="button" onclick="closeModal('addConnectionModal')" class="btn btn-sm" style="text-transform: none; background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 16px; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc';" onmouseout="this.style.background='#ffffff';">Cancel</button>
-                    <button type="submit" id="btnConnectRepo" class="btn btn-danger btn-sm" style="text-transform: none;">Connect Repo</button>
+                <!-- Footer -->
+                <div class="gd-modal-footer">
+                    <button type="button" onclick="closeModal('addConnectionModal')" class="gd-btn gd-btn-outline">Cancel</button>
+                    <button type="submit" id="btnConnectRepo" class="gd-btn gd-btn-primary">
+                        <span>Connect Repository</span>
+                    </button>
                 </div>
             </form>
 
         </div>
     </div>
 
-    <!-- GitHub Token Modal -->
-    <div id="githubTokenModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: center; justify-content: center; padding: 16px;">
-        <div style="background: #fff; border-radius: 4px; max-width: 500px; width: 100%; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); overflow: hidden; animation: modalIn 0.3s ease;">
+    <!-- MODAL 4: Edit Connection Modal -->
+    <div id="editConnectionModal" class="gd-modal-backdrop" onclick="handleBackdropClick(event, 'editConnectionModal')">
+        <div class="gd-modal-box">
             
-            <div style="padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
-                <h5 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">GitHub Integration</h5>
-                <button onclick="closeModal('githubTokenModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; transition: color 0.2s;" onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'">×</button>
+            <div class="gd-modal-header">
+                <h5 class="gd-modal-title" id="editModalTitle">Edit Connection Settings</h5>
+                <button onclick="closeModal('editConnectionModal')" class="gd-modal-close" aria-label="Close">✕</button>
             </div>
 
-            <!-- Admin Settings Tab Headers if superuser/admin -->
+            <form id="editDeploymentForm" onsubmit="submitEditForm(event)">
+                {% csrf_token %}
+                <input type="hidden" id="editDepId" name="dep_id">
+                
+                <div class="gd-modal-body">
+                    <div id="editFormError" class="gd-alert gd-alert-danger" style="display: none;"></div>
+                    
+                    <p class="gd-help-lead">Update the deployment destination folder or target branch for <strong id="editModalDomainName"></strong>.</p>
+
+                    <!-- Deployment Directory Path -->
+                    <div class="gd-form-group">
+                        <label class="gd-label">Deployment Directory Path</label>
+                        <div class="gd-input-prefix-wrap">
+                            <span class="gd-input-prefix">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            </span>
+                            <input type="text" name="deploy_path" id="editDeployPathInput" required placeholder="/home/username/public_html" class="gd-input gd-code-font" style="padding-left: 34px;">
+                        </div>
+                        <span style="font-size: 0.72rem; color: var(--gd-text-muted);">Future git pushes and manual deployments will checkout files into this path.</span>
+                    </div>
+
+                    <!-- Target Branch -->
+                    <div class="gd-form-group">
+                        <label class="gd-label">Target Deploy Branch</label>
+                        <div class="gd-input-prefix-wrap">
+                            <span class="gd-input-prefix">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                            </span>
+                            <input type="text" name="branch" id="editBranchInput" required placeholder="main" class="gd-input" style="padding-left: 34px;">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="gd-modal-footer">
+                    <button type="button" onclick="closeModal('editConnectionModal')" class="gd-btn gd-btn-outline">Cancel</button>
+                    <button type="submit" id="btnSaveEdit" class="gd-btn gd-btn-primary">
+                        <span>Save Changes</span>
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- MODAL 2: GitHub Integration Modal -->
+    <div id="githubTokenModal" class="gd-modal-backdrop" onclick="handleBackdropClick(event, 'githubTokenModal')">
+        <div class="gd-modal-box" style="max-width: 460px;">
+            
+            <div class="gd-modal-header">
+                <h5 class="gd-modal-title">GitHub Integration</h5>
+                <button onclick="closeModal('githubTokenModal')" class="gd-modal-close" aria-label="Close">✕</button>
+            </div>
+
+            <!-- Admin Segmented Tabs -->
             {% if is_admin %}
-            <div style="display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 0 24px; gap: 20px; font-size: 0.85rem; font-weight: 600; border-top: 1px solid #f1f5f9;">
-                <span id="tabGithubUser" onclick="switchGithubModalTab('user')" style="padding: 12px 0; border-bottom: 2px solid {{ branding.brand_color|default:'#ef6d19' }}; color: {{ branding.brand_color|default:'#ef6d19' }}; cursor: pointer; user-select: none;">
-                    Connect Account
-                </span>
-                <span id="tabGithubAdmin" onclick="switchGithubModalTab('admin')" style="padding: 12px 0; border-bottom: 2px solid transparent; color: #64748b; cursor: pointer; user-select: none;">
-                    GitHub App Settings
-                </span>
+            <div class="gd-modal-tabs">
+                <button type="button" id="tabGithubUser" class="gd-modal-tab-btn active" onclick="switchGithubModalTab('user')">User Connection</button>
+                <button type="button" id="tabGithubAdmin" class="gd-modal-tab-btn" onclick="switchGithubModalTab('admin')">Server App Settings</button>
             </div>
             {% endif %}
 
-            <!-- Tab Content: User Connection -->
-            <div id="githubModalUserContent" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
-                <!-- Hidden input for backward compatibility of JS functions -->
+            <!-- User Connection Tab -->
+            <div id="githubModalUserContent" class="gd-modal-body">
                 <input type="hidden" id="githubPatInput" value="">
                 
                 {% if has_github_token %}
-                <div style="text-align: center; padding: 10px 0;">
-                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: #f0fdf4; border: 1px solid #bbf7d0; color: #16a34a; font-size: 1.5rem; margin-bottom: 16px;">
-                        ✓
+                <div class="gd-connected-card">
+                    <div class="gd-connected-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
-                    <h6 style="margin: 0 0 8px; font-size: 1.1rem; font-weight: 600; color: #1e293b;">GitHub Account Connected</h6>
-                    <p style="margin: 0 0 24px; font-size: 0.85rem; color: #64748b; line-height: 1.5;">
-                        Your account is successfully linked. You can now select your repositories when connecting sites.
-                    </p>
-                    <div style="display: flex; justify-content: center; gap: 12px;">
-                        <button type="button" onclick="closeModal('githubTokenModal')" class="btn btn-sm" style="text-transform: none; background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 16px; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc';" onmouseout="this.style.background='#ffffff';">Close</button>
-                        <button type="button" onclick="submitTokenForm('delete')" class="btn btn-outline-danger btn-sm" style="text-transform: none;">Disconnect</button>
+                    <h6 class="gd-connected-title">GitHub Account Connected</h6>
+                    <p class="gd-connected-desc">Your GitHub profile is authorized. You can select your repositories directly and auto-register webhooks.</p>
+                    <div class="gd-btn-group-center">
+                        <button type="button" onclick="closeModal('githubTokenModal')" class="gd-btn gd-btn-outline">Close</button>
+                        <button type="button" onclick="submitTokenForm('delete')" class="gd-btn gd-btn-danger">Disconnect</button>
                     </div>
                 </div>
                 {% else %}
-                <div style="text-align: center; padding: 10px 0;">
-                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: #f8fafc; border: 1px solid #e2e8f0; color: #475569; font-size: 1.5rem; margin-bottom: 16px;">
-                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                <div class="gd-disconnected-card">
+                    <div class="gd-github-hero-icon">
+                        <svg width="36" height="36" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
                     </div>
-                    <h6 style="margin: 0 0 8px; font-size: 1.1rem; font-weight: 600; color: #1e293b;">Link GitHub Profile</h6>
-                    <p style="margin: 0 0 24px; font-size: 0.85rem; color: #64748b; line-height: 1.5;">
-                        Connect your GitHub account to access your repositories and automate webhooks for instant deployment.
-                    </p>
+                    <h6 class="gd-disconnected-title">Connect with GitHub</h6>
+                    <p class="gd-disconnected-desc">Authorize OLSPanel to read repository branches and automate webhooks for instant push deployment.</p>
                     
                     {% if oauth_configured %}
-                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                        <a href="{% url 'git_deploy_oauth_redirect' %}" class="btn btn-pill btn-success btn-sm" style="text-transform: none; display: inline-flex; align-items: center; gap: 8px;">
-                            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                            Connect GitHub Account
+                    <div class="gd-btn-group-center">
+                        <a href="{% url 'git_deploy_oauth_redirect' %}" class="gd-btn gd-btn-github">
+                            <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                            <span>Authorize GitHub Account</span>
                         </a>
-                        <button type="button" onclick="closeModal('githubTokenModal')" class="btn btn-sm" style="text-transform: none; background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 16px; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc';" onmouseout="this.style.background='#ffffff';">Cancel</button>
+                        <button type="button" onclick="closeModal('githubTokenModal')" class="gd-btn gd-btn-outline">Cancel</button>
                     </div>
                     {% else %}
-                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 14px; font-size: 0.82rem; color: #991b1b; text-align: left; line-height: 1.5;">
-                        <strong>⚠️ Integration Not Configured</strong><br>
-                        GitHub OAuth is not configured on this server yet.<br>
+                    <div class="gd-alert gd-alert-warning">
+                        <strong>⚠️ Integration Pending Server Setup</strong>
+                        <p style="margin-top: 3px;">Server-wide GitHub OAuth has not been configured yet.</p>
                         {% if is_admin %}
-                        Please switch to the <strong>GitHub App Settings</strong> tab to configure it.
+                        <p style="margin-top: 3px;">Click <strong>Server App Settings</strong> above to create the GitHub App automatically.</p>
                         {% else %}
-                        Please request the system administrator to configure the server-wide GitHub App.
+                        <p style="margin-top: 3px;">Please ask your system administrator to configure the server-wide GitHub App.</p>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -344,47 +1455,41 @@
                 {% endif %}
             </div>
 
-            <!-- Tab Content: Admin settings -->
+            <!-- Admin App Settings Tab -->
             {% if is_admin %}
-            <div id="githubModalAdminContent" style="display: none; padding: 24px; flex-direction: column; gap: 16px;">
-                <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.5; text-align: left;">
-                    Generate a GitHub App for this OLSPanel server automatically. This enables all users on this panel to securely link their repositories.
-                </p>
+            <div id="githubModalAdminContent" class="gd-modal-body" style="display: none;">
+                <p class="gd-help-lead">Generate and link a server-wide GitHub App for this OLSPanel instance.</p>
 
                 {% if oauth_configured %}
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 10px 12px; text-align: left;">
-                        <span>✓</span> <span>System GitHub App is currently active and configured.</span>
-                    </div>
-                    
-                    <button type="button" onclick="disconnectGithubApp()" class="btn btn-outline-danger btn-sm" style="text-transform: none; width: 100%; display: flex; align-items: center; justify-content: center;">
-                        Disconnect GitHub App
-                    </button>
- 
-                    <div style="font-size: 0.78rem; color: #64748b; line-height: 1.5; text-align: left; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
-                        <strong style="color: #475569;">💡 How to delete the App on GitHub:</strong><br>
-                        Since this app is registered under your developer settings on GitHub, disconnecting it locally does not automatically delete it from GitHub. To delete it fully:
-                        <div style="margin-top: 8px;">
-                            <a href="{% if github_app_slug %}https://github.com/settings/apps/{{ github_app_slug }}{% else %}https://github.com/settings/apps{% endif %}" target="_blank" style="color: {{ branding.brand_color|default:'#ef6d19' }}; font-weight: 600; text-decoration: underline;">
-                                Open App Settings on GitHub →
-                            </a>
-                        </div>
-                        Scroll down to the bottom of the page and click <strong>"Delete GitHub App"</strong>.
+                <div class="gd-alert gd-alert-success" style="margin-bottom: 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <strong>System GitHub App is configured & active.</strong>
                     </div>
                 </div>
+                
+                <button type="button" onclick="disconnectGithubApp()" class="gd-btn gd-btn-outline-danger" style="width: 100%; justify-content: center; margin-bottom: 14px;">
+                    Disconnect GitHub App
+                </button>
+
+                <div class="gd-info-callout">
+                    <h6>💡 How to remove the App on GitHub:</h6>
+                    <a href="{% if github_app_slug %}https://github.com/settings/apps/{{ github_app_slug }}{% else %}https://github.com/settings/apps{% endif %}" target="_blank" class="gd-link-highlight">
+                        Open Developer Settings on GitHub →
+                    </a>
+                </div>
                 {% else %}
-                <!-- Frictionless Setup Form -->
                 <form action="https://github.com/settings/apps/new" method="post" style="margin: 0; width: 100%;">
                     <input type="hidden" name="manifest" id="githubManifestPayload">
-                    <button type="submit" onclick="generateGithubManifest(event, this)" class="btn btn-pill btn-success btn-sm" style="text-transform: none; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        Setup GitHub App Automatically
+                    <button type="submit" onclick="generateGithubManifest(event, this)" class="gd-btn gd-btn-primary" style="width: 100%; justify-content: center; margin-bottom: 12px;">
+                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                        <span>Setup GitHub App Automatically</span>
                     </button>
                 </form>
 
-                <!-- Critical install instruction -->
-                <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #d97706; border-radius: 4px; padding: 12px; font-size: 0.8rem; color: #78350f; line-height: 1.5; text-align: left;">
-                    <strong style="display: block; margin-bottom: 4px;">⚠️ Important Step:</strong>
-                    During setup, GitHub will ask where to install the App. Make sure to choose <strong>"All repositories"</strong> to ensure your private repositories can be retrieved by the panel.
+                <div class="gd-alert gd-alert-info">
+                    <strong>⚠️ Setup Tip:</strong>
+                    <p style="margin-top: 2px;">When prompted where to install the App, choose <strong>"All repositories"</strong>.</p>
                 </div>
                 {% endif %}
             </div>
@@ -393,19 +1498,61 @@
         </div>
     </div>
 
-    <!-- View Logs Drawer -->
-    <div id="logsDrawerModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: stretch; justify-content: flex-end;">
-        <div style="background: #fff; width: 100%; max-width: 650px; height: 100vh; max-height: 100vh; border-left: 1px solid #e2e8f0; box-shadow: -10px 0 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; animation: drawerIn 0.3s ease;">
+    <!-- MODAL 3: Manual Webhook & SSH Key Info Modal -->
+    <div id="webhookDetailsModal" class="gd-modal-backdrop" onclick="handleBackdropClick(event, 'webhookDetailsModal')">
+        <div class="gd-modal-box" style="max-width: 520px;">
             
-            <div style="padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; background: #f8fafc;">
-                <div>
-                    <h5 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">Deployment History</h5>
-                    <p style="margin: 4px 0 0; font-size: 0.8rem; color: #64748b;">Recent automation steps and deployment logs</p>
-                </div>
-                <button onclick="closeModal('logsDrawerModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8;" onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'">×</button>
+            <div class="gd-modal-header">
+                <h5 id="modalWebhookDomainTitle" class="gd-modal-title">Webhook & Deploy Keys</h5>
+                <button onclick="closeModal('webhookDetailsModal')" class="gd-modal-close" aria-label="Close">✕</button>
             </div>
 
-            <div id="logsContainer" style="flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;">
+            <div class="gd-modal-body">
+                
+                <!-- Webhook URL Field -->
+                <div class="gd-form-group">
+                    <label class="gd-label">Webhook Payload URL</label>
+                    <div class="gd-copy-input-group">
+                        <input type="text" id="modalWebhookUrlInput" readonly class="gd-input gd-code-font">
+                        <button type="button" onclick="copyInputText('modalWebhookUrlInput', this)" class="gd-btn gd-btn-outline gd-btn-compact">
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SSH Public Key Field -->
+                <div class="gd-form-group" id="modalSshKeyContainer">
+                    <label class="gd-label">Deploy SSH Public Key</label>
+                    <div class="gd-copy-input-group">
+                        <textarea id="modalSshKeyInput" readonly class="gd-input gd-code-font" rows="3" style="resize: none;"></textarea>
+                        <button type="button" onclick="copyInputText('modalSshKeyInput', this)" class="gd-btn gd-btn-outline gd-btn-compact" style="align-self: flex-start;">
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="gd-modal-footer">
+                <button type="button" onclick="closeModal('webhookDetailsModal')" class="gd-btn gd-btn-primary">Done</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- DRAWER: Deployment History & Logs -->
+    <div id="logsDrawerModal" class="gd-drawer-backdrop" onclick="handleDrawerBackdrop(event)">
+        <div class="gd-drawer-panel">
+            
+            <div class="gd-drawer-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="gd-terminal-dot"></span>
+                    <h5 class="gd-drawer-title" id="drawerTitleText">Deployment History</h5>
+                </div>
+                <button onclick="closeModal('logsDrawerModal')" class="gd-modal-close" aria-label="Close">✕</button>
+            </div>
+
+            <div id="logsContainer" class="gd-drawer-body">
                 <!-- Dynamically populated logs -->
             </div>
 
@@ -414,151 +1561,73 @@
 
 </div>
 
-<style>
-@keyframes modalIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
-@keyframes drawerIn {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
-}
-.log-accordion {
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    overflow: hidden;
-    background: #fff;
-    flex-shrink: 0;
-    transition: all 0.2s;
-}
-.log-accordion:hover {
-    border-color: #cbd5e1;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
-.log-header {
-    padding: 10px 14px;
-    background: #fff;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    user-select: none;
-    border-bottom: 1px solid transparent;
-    transition: all 0.2s;
-}
-.log-header:hover {
-    background: #f8fafc;
-}
-.log-body {
-    padding: 16px;
-    background: #0f172a;
-    color: #f8fafc;
-    font-family: 'Fira Code', 'Courier New', monospace;
-    font-size: 0.82rem;
-    white-space: pre-wrap;
-    display: none;
-    border-top: 1px solid #e2e8f0;
-    box-sizing: border-box;
-}
-@keyframes pulse {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4); }
-    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(217, 119, 6, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
-}
-</style>
-
+<!-- Page Logic Scripts -->
 <script>
-function toggleCustomDropdown() {
-    const dropdown = document.getElementById('customSelectDropdown');
-    const arrow = document.getElementById('customSelectArrow');
-    const trigger = document.querySelector('.custom-select-trigger');
-    
-    if (dropdown.style.display === 'none' || !dropdown.style.display) {
-        dropdown.style.display = 'block';
-        arrow.style.transform = 'rotate(180deg)';
-        trigger.style.borderColor = '{{ branding.brand_color|default:"#ef6d19" }}';
-        trigger.style.boxShadow = '0 0 0 3px rgba(239, 109, 25, 0.15)';
-        document.getElementById('customSelectSearch').focus();
-    } else {
-        dropdown.style.display = 'none';
-        arrow.style.transform = 'none';
-        trigger.style.borderColor = '#cbd5e1';
-        trigger.style.boxShadow = 'none';
-    }
-}
-
-function selectCustomOption(val, text) {
-    const hiddenSelect = document.getElementById('hiddenDomainSelect');
-    hiddenSelect.value = val;
-    
-    const label = document.getElementById('customSelectLabel');
-    label.textContent = text;
-    label.style.color = '#1e293b';
-    label.style.fontWeight = '500';
-    
-    toggleCustomDropdown();
-    
-    const options = document.querySelectorAll('.custom-select-option');
-    options.forEach(opt => {
-        if (opt.getAttribute('data-value') === val) {
-            opt.style.background = 'rgba(239, 109, 25, 0.1)';
-            opt.style.color = '{{ branding.brand_color|default:"#ef6d19" }}';
-            opt.style.fontWeight = '600';
+// Filter connections in list
+function filterConnections() {
+    const searchInput = document.getElementById('filterConnectionsInput');
+    if (!searchInput) return;
+    const search = searchInput.value.toLowerCase();
+    const rows = document.querySelectorAll('#deploymentsTable tbody tr');
+    rows.forEach(row => {
+        const domain = row.getAttribute('data-domain') || '';
+        const repo = row.getAttribute('data-repo') || '';
+        if (domain.includes(search) || repo.includes(search)) {
+            row.style.display = '';
         } else {
-            opt.style.background = 'transparent';
-            opt.style.color = '#334155';
-            opt.style.fontWeight = 'normal';
+            row.style.display = 'none';
         }
     });
 }
 
-function filterCustomOptions() {
-    const search = document.getElementById('customSelectSearch').value.toLowerCase();
-    const options = document.querySelectorAll('.custom-select-option');
-    let found = 0;
-    
-    options.forEach(opt => {
-        const text = opt.textContent.toLowerCase();
-        if (text.includes(search)) {
-            opt.style.display = 'block';
-            found++;
-        } else {
-            opt.style.display = 'none';
+// Refresh deployments table without full page reload
+function refreshDeploymentsTable(btn) {
+    const icon = btn ? btn.querySelector('svg') : null;
+    if (icon) icon.classList.add('gd-spin');
+    if (btn) btn.disabled = true;
+
+    fetch(window.location.href)
+    .then(res => res.text())
+    .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        const newWrapper = doc.getElementById('tableContainerWrapper');
+        const currentWrapper = document.getElementById('tableContainerWrapper');
+        if (newWrapper && currentWrapper) {
+            currentWrapper.innerHTML = newWrapper.innerHTML;
         }
+
+        const newPill = doc.getElementById('connectionsCountPill');
+        const currentPill = document.getElementById('connectionsCountPill');
+        if (newPill && currentPill) {
+            currentPill.textContent = newPill.textContent;
+        }
+
+        filterConnections();
+    })
+    .catch(err => {
+        console.error("Failed to refresh table:", err);
+    })
+    .finally(() => {
+        if (icon) icon.classList.remove('gd-spin');
+        if (btn) btn.disabled = false;
     });
-    
-    const noFound = document.getElementById('noDomainsFound');
-    if (found === 0) {
-        noFound.style.display = 'block';
-    } else {
-        noFound.style.display = 'none';
-    }
 }
 
-document.addEventListener('click', function(e) {
-    const container = document.getElementById('domainSelectContainer');
-    const dropdown = document.getElementById('customSelectDropdown');
-    const arrow = document.getElementById('customSelectArrow');
-    const trigger = document.querySelector('.custom-select-trigger');
-    
-    if (container && !container.contains(e.target)) {
-        if (dropdown && dropdown.style.display === 'block') {
-            dropdown.style.display = 'none';
-            arrow.style.transform = 'none';
-            trigger.style.borderColor = '#cbd5e1';
-            trigger.style.boxShadow = 'none';
-        }
-    }
-});
-
+// Modal handling
 function openModal(id) {
     const modal = document.getElementById(id);
-    modal.style.display = "flex";
+    if (modal) {
+        modal.style.display = "flex";
+    }
 }
 
 function closeModal(id) {
     const modal = document.getElementById(id);
-    modal.style.display = "none";
+    if (modal) {
+        modal.style.display = "none";
+    }
     if (id === 'logsDrawerModal') {
         if (window.logPollingInterval) {
             clearInterval(window.logPollingInterval);
@@ -571,27 +1640,147 @@ function closeModal(id) {
     }
 }
 
-function copyToClipboard(id) {
-    const input = document.getElementById(id);
+function handleBackdropClick(event, id) {
+    if (event.target.id === id) {
+        closeModal(id);
+    }
+}
+
+function handleDrawerBackdrop(event) {
+    if (event.target.id === 'logsDrawerModal') {
+        closeModal('logsDrawerModal');
+    }
+}
+
+// Open Webhook & SSH Key Modal
+function openWebhookModal(depId, domain, webhookUrl, sshKey) {
+    document.getElementById('modalWebhookDomainTitle').textContent = `Keys: ${domain}`;
+    document.getElementById('modalWebhookUrlInput').value = webhookUrl;
+    
+    const keyContainer = document.getElementById('modalSshKeyContainer');
+    const keyInput = document.getElementById('modalSshKeyInput');
+    if (sshKey && sshKey.trim()) {
+        keyContainer.style.display = 'block';
+        keyInput.value = sshKey;
+    } else {
+        keyContainer.style.display = 'none';
+        keyInput.value = '';
+    }
+    
+    openModal('webhookDetailsModal');
+}
+
+function copyInputText(inputId, btn) {
+    const input = document.getElementById(inputId);
     input.select();
     input.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(input.value);
     
-    // Quick notification tooltip
-    const button = input.nextElementSibling;
-    const oldText = button.textContent;
-    button.textContent = "Copied!";
-    button.style.background = "#dcfce7";
-    button.style.color = "#15803d";
-    button.style.borderColor = "#86efac";
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span>Copied!</span>';
+    btn.style.background = '#dcfce7';
+    btn.style.color = '#15803d';
+    btn.style.borderColor = '#86efac';
     setTimeout(() => {
-        button.textContent = oldText;
-        button.style.background = "#fff";
-        button.style.color = "#475569";
-        button.style.borderColor = "#cbd5e1";
-    }, 2000);
+        btn.innerHTML = originalText;
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+    }, 1800);
 }
 
+// Domain Dropdown Handlers
+function toggleCustomDropdown() {
+    const dropdown = document.getElementById('customSelectDropdown');
+    const arrow = document.getElementById('customSelectArrow');
+    const trigger = document.querySelector('.custom-select-trigger');
+    
+    if (dropdown.style.display === 'none' || !dropdown.style.display) {
+        dropdown.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+        trigger.style.borderColor = 'var(--gd-brand)';
+        trigger.style.boxShadow = '0 0 0 2px var(--gd-brand-light)';
+        const searchInput = document.getElementById('customSelectSearch');
+        if (searchInput) searchInput.focus();
+    } else {
+        dropdown.style.display = 'none';
+        if (arrow) arrow.style.transform = 'none';
+        trigger.style.borderColor = '#d1d5db';
+        trigger.style.boxShadow = 'none';
+    }
+}
+
+function selectCustomOption(val, text, path) {
+    const hiddenSelect = document.getElementById('hiddenDomainSelect');
+    hiddenSelect.value = val;
+    
+    const label = document.getElementById('customSelectLabel');
+    label.textContent = text;
+    label.style.color = 'var(--gd-text-main)';
+    label.style.fontWeight = '600';
+    
+    // Auto-populate deploy path from domain root, allowing user full edit control
+    const pathInput = document.getElementById('deployPathInput');
+    if (pathInput) {
+        pathInput.value = path || '';
+    }
+    
+    toggleCustomDropdown();
+    
+    const options = document.querySelectorAll('.custom-select-option');
+    options.forEach(opt => {
+        if (opt.getAttribute('data-value') === val) {
+            opt.style.background = 'var(--gd-brand-light)';
+            opt.style.color = 'var(--gd-brand)';
+            opt.style.fontWeight = '600';
+        } else {
+            opt.style.background = 'transparent';
+            opt.style.color = 'var(--gd-text-body)';
+            opt.style.fontWeight = 'normal';
+        }
+    });
+}
+
+function filterCustomOptions() {
+    const search = document.getElementById('customSelectSearch').value.toLowerCase();
+    const options = document.querySelectorAll('#customSelectOptionsList .custom-select-option');
+    let found = 0;
+    
+    options.forEach(opt => {
+        const text = opt.textContent.toLowerCase();
+        if (text.includes(search)) {
+            opt.style.display = 'flex';
+            found++;
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+    
+    const noFound = document.getElementById('noDomainsFound');
+    if (noFound) {
+        noFound.style.display = found === 0 ? 'block' : 'none';
+    }
+}
+
+document.addEventListener('click', function(e) {
+    const container = document.getElementById('domainSelectContainer');
+    const dropdown = document.getElementById('customSelectDropdown');
+    const arrow = document.getElementById('customSelectArrow');
+    const trigger = document.querySelector('.custom-select-trigger');
+    
+    if (container && !container.contains(e.target)) {
+        if (dropdown && dropdown.style.display === 'block') {
+            dropdown.style.display = 'none';
+            if (arrow) arrow.style.transform = 'none';
+            if (trigger) {
+                trigger.style.borderColor = '#d1d5db';
+                trigger.style.boxShadow = 'none';
+            }
+        }
+    }
+});
+
+// Form submission for creating new deployment link
 function showCreateFormError(message) {
     const errorBanner = document.getElementById('createFormError');
     errorBanner.textContent = message;
@@ -603,13 +1792,17 @@ function submitCreateForm(event) {
     event.preventDefault();
     const form = document.getElementById('createDeploymentForm');
     
-    // Clear previous errors
     document.getElementById('createFormError').style.display = 'none';
     
-    // Client-side validations
     const domainId = document.getElementById('hiddenDomainSelect').value;
     if (!domainId) {
         showCreateFormError("Please select a target domain or subdomain.");
+        return;
+    }
+
+    const deployPath = document.getElementById('deployPathInput').value.trim();
+    if (!deployPath) {
+        showCreateFormError("Please specify a deployment directory path.");
         return;
     }
     
@@ -617,7 +1810,7 @@ function submitCreateForm(event) {
     if (!repoUrl) {
         const githubSelect = document.getElementById('githubSelectRepoContainer');
         if (githubSelect && githubSelect.style.display !== 'none') {
-            showCreateFormError("Please select a GitHub repository from the dropdown list.");
+            showCreateFormError("Please select a GitHub repository from the dropdown.");
         } else {
             showCreateFormError("Please enter a target Git repository URL.");
         }
@@ -630,11 +1823,10 @@ function submitCreateForm(event) {
         return;
     }
     
-    // Button loading state & lock
     const submitBtn = document.getElementById('btnConnectRepo');
-    const originalText = submitBtn.innerHTML;
+    const originalContent = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<img src="/media/loading.gif" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle; display: inline-block;" /> Connecting...';
+    submitBtn.innerHTML = '<span>Connecting...</span>';
     
     const formData = new FormData(form);
     
@@ -645,56 +1837,112 @@ function submitCreateForm(event) {
     .then(res => res.json())
     .then(data => {
         if(data.status === "success") {
-            location.reload();
+            closeModal('addConnectionModal');
+            refreshDeploymentsTable();
         } else {
             showCreateFormError(data.message);
             submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
+            submitBtn.innerHTML = originalContent;
         }
     })
     .catch(err => {
         showCreateFormError("Server error connecting repository. Please try again.");
         submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        submitBtn.innerHTML = originalContent;
     });
 }
 
-window.logPollingInterval = null;
+// Edit Existing Connection Modal & Form
+function openEditModal(depId, domain, branch, deployPath) {
+    document.getElementById('editModalTitle').textContent = `Edit Connection Settings`;
+    const domainLabel = document.getElementById('editModalDomainName');
+    if (domainLabel) domainLabel.textContent = domain;
+    document.getElementById('editDepId').value = depId;
+    document.getElementById('editBranchInput').value = branch || 'main';
+    document.getElementById('editDeployPathInput').value = deployPath || '';
+    document.getElementById('editFormError').style.display = 'none';
+    openModal('editConnectionModal');
+}
 
+function submitEditForm(event) {
+    event.preventDefault();
+    const form = document.getElementById('editDeploymentForm');
+    const depId = document.getElementById('editDepId').value;
+    const branch = document.getElementById('editBranchInput').value.trim();
+    const deployPath = document.getElementById('editDeployPathInput').value.trim();
+    const errorBanner = document.getElementById('editFormError');
+    const submitBtn = document.getElementById('btnSaveEdit');
+
+    errorBanner.style.display = 'none';
+
+    if (!deployPath) {
+        errorBanner.textContent = "Deployment directory path cannot be empty.";
+        errorBanner.style.display = 'block';
+        return;
+    }
+
+    const originalContent = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Saving...</span>';
+
+    const formData = new FormData(form);
+
+    fetch(`/module/git_deploy/update/${depId}/`, {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            closeModal('editConnectionModal');
+            refreshDeploymentsTable();
+        } else {
+            errorBanner.textContent = data.message;
+            errorBanner.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalContent;
+        }
+    })
+    .catch(err => {
+        errorBanner.textContent = "Server error saving changes. Please try again.";
+        errorBanner.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalContent;
+    });
+}
+
+// Manual Deploy Action
 function triggerManualDeploy(depId, button) {
-    const originalText = button.innerHTML;
+    const originalHtml = button.innerHTML;
     button.disabled = true;
-    button.innerHTML = "Dispatching...";
-    
-    // Update main page status badge to pending immediately
-    updateMainPageStatus(depId, 'pending');
+    button.innerHTML = "<span>Dispatching...</span>";
 
     fetch(`/module/git_deploy/deploy/${depId}/`)
     .then(res => res.json())
     .then(data => {
         if(data.status === "success") {
-            button.innerHTML = "Triggered!";
+            button.innerHTML = "<span>Triggered!</span>";
             setTimeout(() => {
-                // Open logs drawer and focus on this new log_id
+                button.disabled = false;
+                button.innerHTML = originalHtml;
                 openLogsModal(depId, data.log_id);
-            }, 1000);
+            }, 600);
         } else {
             alert("Error: " + data.message);
             button.disabled = false;
-            button.innerHTML = originalText;
-            updateMainPageStatus(depId, 'failed');
+            button.innerHTML = originalHtml;
         }
     })
     .catch(err => {
         alert("Server error triggering deploy.");
         button.disabled = false;
-        button.innerHTML = originalText;
-        updateMainPageStatus(depId, 'failed');
+        button.innerHTML = originalHtml;
     });
 }
 
+// Delete Connection Action
 function confirmDelete(depId) {
-    if(confirm("Are you sure you want to delete this repository link? This will not delete your files, but it will remove the webhook listener and deploy configurations.")) {
+    if(confirm("Are you sure you want to delete this repository link? This will remove automated webhooks and sync settings without deleting your site files.")) {
         const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
         fetch(`/module/git_deploy/delete/${depId}/`, {
             method: "POST",
@@ -705,7 +1953,7 @@ function confirmDelete(depId) {
         .then(res => res.json())
         .then(data => {
             if(data.status === "success") {
-                location.reload();
+                refreshDeploymentsTable();
             } else {
                 alert("Error deleting config: " + data.message);
             }
@@ -713,97 +1961,64 @@ function confirmDelete(depId) {
     }
 }
 
+// Status Helpers
 function getStatusDotHtml(status) {
     if (status === 'success') {
-        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);"></span>';
+        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);"></span>';
     } else if (status === 'failed') {
-        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);"></span>';
+        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);"></span>';
     } else {
-        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #d97706; animation: pulse 1.5s infinite;"></span>';
-    }
-}
-
-function getStatusBadgeHtml(status) {
-    if (status === 'success') {
-        return '<span style="color:#16a34a; font-weight:600; font-size:0.75rem;">SUCCESS</span>';
-    } else if (status === 'failed') {
-        return '<span style="color:#dc2626; font-weight:600; font-size:0.75rem;">FAILED</span>';
-    } else {
-        return '<span style="color:#d97706; font-weight:600; font-size:0.75rem;">PENDING</span>';
+        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #f59e0b; animation: gdPulse 1.5s infinite;"></span>';
     }
 }
 
 function createLogAccordionElement(log) {
-    const date = new Date(log.created_at).toLocaleString();
+    let dateStr = "Recent";
+    try {
+        if (log.created_at) {
+            dateStr = new Date(log.created_at).toLocaleString();
+        }
+    } catch(e) {}
+
     const logItem = document.createElement('div');
     logItem.className = 'log-accordion';
     logItem.id = `logRun_${log.id}`;
     
+    const commitMsg = log.commit_message && log.commit_message.trim() ? log.commit_message : 'Manual Deployment';
+    const commitAuthor = log.commit_author || 'admin';
+    const hashStr = log.commit_hash ? log.commit_hash.substring(0, 7) : 'manual';
+    const statusColor = log.status === 'success' ? '#10b981' : (log.status === 'failed' ? '#ef4444' : '#f59e0b');
+    const logOutput = log.log_output && log.log_output.trim() ? log.log_output : 'No output recorded for this run.';
+
     logItem.innerHTML = `
-        <div class="log-header" onclick="toggleLogBody(this)" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #fff; transition: all 0.2s;">
-            <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
-                <div style="flex-shrink: 0; display: flex; align-items: center;">
+        <div class="log-header" onclick="toggleLogBody(this)">
+            <div class="log-header-main">
+                <div class="log-status-dot-wrap">
                     ${getStatusDotHtml(log.status)}
                 </div>
-                <div style="min-width: 0; flex: 1;">
-                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;">
-                        ${log.commit_message || 'Manual Deployment'}
+                <div class="log-header-text">
+                    <div class="log-commit-title">
+                        ${escapeHtml(commitMsg)}
                     </div>
-                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                        <span>${date}</span>
+                    <div class="log-meta-line">
+                        <span>${dateStr}</span>
                         <span>•</span>
-                        <code style="font-size: 0.7rem; background: #f1f5f9; padding: 1px 4px; border-radius: 3px; color: #475569;">
-                            ${log.commit_hash ? log.commit_hash.substring(0, 7) : 'no hash'}
-                        </code>
+                        <code class="log-hash-badge">${hashStr}</code>
                         <span>•</span>
-                        <span style="color: #475569;">by ${log.commit_author || 'user'}</span>
+                        <span>${escapeHtml(commitAuthor)}</span>
                     </div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; margin-left: 12px; flex-shrink: 0;">
-                <span style="font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: ${log.status === 'success' ? '#16a34a' : log.status === 'failed' ? '#dc2626' : '#d97706'}">
-                    ${log.status}
+            <div class="log-header-right">
+                <span class="log-status-text" style="color: ${statusColor};">
+                    ${log.status || 'unknown'}
                 </span>
-                <span class="log-arrow" style="font-size: 0.75rem; color: #94a3b8; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #f1f5f9; transition: all 0.2s;">▼</span>
+                <span class="log-arrow">▼</span>
             </div>
         </div>
-        <div class="log-body" style="display: none; padding: 16px; background: #0f172a; color: #f8fafc; font-family: monospace; font-size: 0.82rem; white-space: pre-wrap; word-break: break-all; border-top: 1px solid #e2e8f0; box-sizing: border-box;">${escapeHtml(log.log_output || 'No log details available.')}</div>
+        <div class="log-body">${escapeHtml(logOutput)}</div>
     `;
     return logItem;
-}
-
-function updateMainPageStatus(depId, status, latestLog) {
-    const mainBadge = document.getElementById(`statusBadge_${depId}`);
-    if (mainBadge) {
-        if (status === 'success') {
-            mainBadge.innerHTML = '<span style="background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Success</span>';
-        } else if (status === 'failed') {
-            mainBadge.innerHTML = '<span style="background: #fee2e2; color: #b91c1c; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Failed</span>';
-        } else if (status === 'pending') {
-            mainBadge.innerHTML = '<span style="background: #fef3c7; color: #d97706; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 4px;">Deploying</span>';
-        }
-    }
-    
-    // Update commit details if visible
-    const lastDeployDetails = document.getElementById(`lastDeployDetails_${depId}`);
-    if (lastDeployDetails) {
-        if (latestLog) {
-            lastDeployDetails.style.display = "flex";
-            const commitMsgSpan = lastDeployDetails.querySelector('span[style*="font-weight: 500"]');
-            if (commitMsgSpan) {
-                commitMsgSpan.innerHTML = `${latestLog.commit_message || 'Manual Deployment'}`;
-            }
-            const hashElement = lastDeployDetails.querySelector('code');
-            if (hashElement) {
-                if (latestLog.commit_hash) {
-                    hashElement.style.display = "inline-block";
-                    hashElement.textContent = latestLog.commit_hash.substring(0, 7);
-                } else {
-                    hashElement.style.display = "none";
-                }
-            }
-        }
-    }
 }
 
 window.activeLogStreamReader = null;
@@ -814,7 +2029,7 @@ function streamLogOutput(logId, logBodyElement, depId, deployBtn) {
         window.activeLogStreamReader = null;
     }
 
-    logBodyElement.textContent = "Connecting to live log stream...\n";
+    logBodyElement.textContent = "Connecting to live build stream...\n";
 
     fetch(`/module/git_deploy/deploy/stream/${logId}/`)
     .then(async res => {
@@ -827,7 +2042,7 @@ function streamLogOutput(logId, logBodyElement, depId, deployBtn) {
         window.activeLogStreamReader = reader;
         const decoder = new TextDecoder("utf-8");
 
-        logBodyElement.textContent = ""; // Clear loader message
+        logBodyElement.textContent = "";
 
         try {
             while (true) {
@@ -842,12 +2057,12 @@ function streamLogOutput(logId, logBodyElement, depId, deployBtn) {
                 }
             }
         } catch (err) {
-            logBodyElement.textContent += "\n\nStream interrupted: " + err;
+            logBodyElement.textContent += "\n\nStream closed: " + err;
         } finally {
             window.activeLogStreamReader = null;
             if (deployBtn) {
                 deployBtn.disabled = false;
-                deployBtn.innerHTML = "Deploy Now";
+                deployBtn.innerHTML = "<span>Deploy</span>";
             }
             refreshLogsList(depId);
         }
@@ -856,7 +2071,7 @@ function streamLogOutput(logId, logBodyElement, depId, deployBtn) {
         logBodyElement.textContent += "\nConnection error: " + err;
         if (deployBtn) {
             deployBtn.disabled = false;
-            deployBtn.innerHTML = "Deploy Now";
+            deployBtn.innerHTML = "<span>Deploy</span>";
         }
     });
 }
@@ -865,30 +2080,22 @@ function refreshLogsList(depId) {
     fetch(`/module/git_deploy/logs/${depId}/`)
     .then(res => res.json())
     .then(data => {
-        if (data.status === "success" && data.logs.length > 0) {
+        if (data.status === "success" && data.logs && data.logs.length > 0) {
             const container = document.getElementById('logsContainer');
             container.innerHTML = "";
             data.logs.forEach((log, index) => {
                 const logItem = createLogAccordionElement(log);
                 container.appendChild(logItem);
                 
-                // Keep the first/latest log expanded if it was the one we just streamed
                 if (index === 0) {
                     const body = logItem.querySelector('.log-body');
                     const arrow = logItem.querySelector('.log-arrow');
-                    body.style.display = "block";
-                    logItem.querySelector('.log-header').style.borderBottomColor = "#e2e8f0";
+                    if (body) body.style.display = "block";
+                    const header = logItem.querySelector('.log-header');
+                    if (header) header.style.borderBottomColor = "#1e293b";
                     if (arrow) arrow.textContent = "▲";
-                    setTimeout(() => {
-                        const logsContainer = document.getElementById('logsContainer');
-                        if (logsContainer) {
-                            logsContainer.scrollTop = logsContainer.scrollHeight;
-                        }
-                    }, 50);
                 }
             });
-            const latestLog = data.logs[0];
-            updateMainPageStatus(depId, latestLog.status, latestLog);
         }
     });
 }
@@ -900,51 +2107,44 @@ function openLogsModal(depId, activeLogId = null) {
     }
 
     const container = document.getElementById('logsContainer');
-    container.innerHTML = "<div style='color:#64748b; text-align:center;'>Loading logs...</div>";
+    container.innerHTML = "<div style='color:#64748b; text-align:center; padding: 24px; font-size: 0.85rem;'>Loading deployment history...</div>";
     openModal('logsDrawerModal');
     
-    // Find the deploy button on main page to re-enable/disable it
     const deployBtn = document.querySelector(`button[onclick*="triggerManualDeploy(${depId},"]`);
     
     fetch(`/module/git_deploy/logs/${depId}/`)
     .then(res => res.json())
     .then(data => {
-        if (data.status === "success" && data.logs.length > 0) {
+        if (data.status === "success" && data.logs && data.logs.length > 0) {
             container.innerHTML = "";
             data.logs.forEach((log, index) => {
                 const logItem = createLogAccordionElement(log);
                 container.appendChild(logItem);
                 
-                // Expand the first/latest log if it is pending or matches activeLogId
-                if (index === 0 && (log.status === 'pending' || log.id === activeLogId)) {
+                // Open the newest log by default or the triggered log
+                if (index === 0 || (activeLogId && log.id === activeLogId)) {
                     const body = logItem.querySelector('.log-body');
                     const arrow = logItem.querySelector('.log-arrow');
-                    body.style.display = "block";
-                    logItem.querySelector('.log-header').style.borderBottomColor = "#e2e8f0";
+                    const header = logItem.querySelector('.log-header');
+                    if (body) body.style.display = "block";
+                    if (header) header.style.borderBottomColor = "#1e293b";
                     if (arrow) arrow.textContent = "▲";
-                    setTimeout(() => {
-                        const logsContainer = document.getElementById('logsContainer');
-                        if (logsContainer) {
-                            logsContainer.scrollTop = logsContainer.scrollHeight;
-                        }
-                    }, 50);
                     
-                    // If it is pending, start streaming
                     if (log.status === 'pending') {
                         if (deployBtn) {
                             deployBtn.disabled = true;
-                            deployBtn.innerHTML = "Deploying...";
+                            deployBtn.innerHTML = "<span>Deploying...</span>";
                         }
                         streamLogOutput(log.id, body, depId, deployBtn);
                     }
                 }
             });
         } else {
-            container.innerHTML = "<div style='color:#64748b; text-align:center;'>No deployment runs found for this project.</div>";
+            container.innerHTML = "<div style='color:#64748b; text-align:center; padding: 30px; font-size: 0.85rem;'>No deployment logs recorded for this domain yet.</div>";
         }
     })
     .catch(err => {
-        container.innerHTML = "<div style='color:#ef4444; text-align:center;'>Failed to load deployment history.</div>";
+        container.innerHTML = "<div style='color:#ef4444; text-align:center; padding: 30px; font-size: 0.85rem;'>Failed to load deployment history.</div>";
     });
 }
 
@@ -957,19 +2157,13 @@ function toggleLogBody(headerElement) {
         if (arrow) arrow.textContent = "▼";
     } else {
         body.style.display = "block";
-        headerElement.style.borderBottomColor = "#e2e8f0";
+        headerElement.style.borderBottomColor = "#1e293b";
         if (arrow) arrow.textContent = "▲";
-        setTimeout(() => {
-            const logsContainer = document.getElementById('logsContainer');
-            if (logsContainer) {
-                body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        }, 50);
     }
 }
 
 function escapeHtml(text) {
-    return text
+    return (text || "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -977,17 +2171,13 @@ function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
+// GitHub Repos Picker & OAuth Handlers
 let githubRepos = [];
 let githubReposLoaded = false;
 
 function submitTokenForm(action) {
     const token = document.getElementById('githubPatInput').value.trim();
     const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
-    
-    if (action === 'save' && !token) {
-        alert("Please enter a token first.");
-        return;
-    }
     
     const formData = new FormData();
     formData.append('action', action);
@@ -1015,7 +2205,7 @@ function submitTokenForm(action) {
 }
 
 function disconnectGithubApp() {
-    if (confirm("Are you sure you want to disconnect the GitHub App from this server? This will clear all GitHub App settings and linked user profile tokens.")) {
+    if (confirm("Disconnect GitHub App from this server? This will clear GitHub App credentials and un-link user tokens.")) {
         const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
         fetch("{% url 'git_deploy_settings_disconnect' %}", {
             method: "POST",
@@ -1026,7 +2216,7 @@ function disconnectGithubApp() {
         .then(res => res.json())
         .then(data => {
             if (data.status === "success") {
-                alert("GitHub App disconnected locally. We will now open your GitHub App Developer Settings so you can delete the App from GitHub too.");
+                alert("GitHub App disconnected locally. We will now open GitHub App Developer Settings so you can delete it there too.");
                 const appSlug = "{{ github_app_slug }}";
                 const githubUrl = appSlug ? `https://github.com/settings/apps/${appSlug}` : "https://github.com/settings/apps";
                 window.open(githubUrl, '_blank');
@@ -1048,30 +2238,21 @@ function switchRepoTab(tab) {
     const manualContainer = document.getElementById('manualRepoUrlContainer');
     const repoInput = document.getElementById('repoUrlInput');
     const autoConfigure = document.getElementById('autoConfigureContainer');
-    const repoTypeContainer = document.getElementById('repoTypeContainer');
     
     if (tab === 'select') {
-        tabSelect.style.borderColor = "{{ branding.brand_color|default:'#ef6d19' }}";
-        tabSelect.style.color = "{{ branding.brand_color|default:'#ef6d19' }}";
-        tabManual.style.borderColor = "transparent";
-        tabManual.style.color = "#64748b";
-        
-        selectContainer.style.display = "block";
-        manualContainer.style.display = "none";
-        repoInput.required = false;
+        if (tabSelect) tabSelect.classList.add('active');
+        if (tabManual) tabManual.classList.remove('active');
+        if (selectContainer) selectContainer.style.display = "block";
+        if (manualContainer) manualContainer.style.display = "none";
+        if (repoInput) repoInput.required = false;
         if (autoConfigure) autoConfigure.style.display = "block";
-        if (repoTypeContainer) repoTypeContainer.style.display = "none";
     } else {
-        tabManual.style.borderColor = "{{ branding.brand_color|default:'#ef6d19' }}";
-        tabManual.style.color = "{{ branding.brand_color|default:'#ef6d19' }}";
-        tabSelect.style.borderColor = "transparent";
-        tabSelect.style.color = "#64748b";
-        
-        selectContainer.style.display = "none";
-        manualContainer.style.display = "block";
-        repoInput.required = true;
+        if (tabManual) tabManual.classList.add('active');
+        if (tabSelect) tabSelect.classList.remove('active');
+        if (selectContainer) selectContainer.style.display = "none";
+        if (manualContainer) manualContainer.style.display = "block";
+        if (repoInput) repoInput.required = true;
         if (autoConfigure) autoConfigure.style.display = "none";
-        if (repoTypeContainer) repoTypeContainer.style.display = "block";
     }
 }
 
@@ -1079,23 +2260,24 @@ function toggleGithubDropdown() {
     const dropdown = document.getElementById('githubSelectDropdown');
     const arrow = document.getElementById('githubSelectArrow');
     
-    if (dropdown.style.display === "none") {
+    if (dropdown.style.display === "none" || !dropdown.style.display) {
         dropdown.style.display = "block";
-        arrow.style.transform = "rotate(180deg)";
-        document.getElementById('githubSelectSearch').focus();
+        if (arrow) arrow.style.transform = "rotate(180deg)";
+        const search = document.getElementById('githubSelectSearch');
+        if (search) search.focus();
         
         if (!githubReposLoaded) {
             loadGithubRepos();
         }
     } else {
         dropdown.style.display = "none";
-        arrow.style.transform = "none";
+        if (arrow) arrow.style.transform = "none";
     }
 }
 
 function loadGithubRepos() {
     const list = document.getElementById('githubSelectOptionsList');
-    list.innerHTML = `<div style="padding: 12px; text-align: center; color: #64748b; font-size: 0.85rem;" id="githubReposLoading">Loading repositories...</div>`;
+    list.innerHTML = `<div class="gd-loading-box">Loading repositories...</div>`;
     
     fetch("{% url 'git_deploy_repos' %}")
     .then(res => res.json())
@@ -1105,11 +2287,11 @@ function loadGithubRepos() {
             githubReposLoaded = true;
             renderGithubOptions(githubRepos);
         } else {
-            list.innerHTML = `<div style="padding: 12px; text-align: center; color: #ef4444; font-size: 0.85rem;">Error: ${data.message}</div>`;
+            list.innerHTML = `<div class="gd-loading-box" style="color: #ef4444;">Error: ${data.message}</div>`;
         }
     })
     .catch(err => {
-        list.innerHTML = `<div style="padding: 12px; text-align: center; color: #ef4444; font-size: 0.85rem;">Server connection failed.</div>`;
+        list.innerHTML = `<div class="gd-loading-box" style="color: #ef4444;">Server connection failed.</div>`;
     });
 }
 
@@ -1117,32 +2299,21 @@ function renderGithubOptions(reposList) {
     const list = document.getElementById('githubSelectOptionsList');
     list.innerHTML = "";
     
-    if (reposList.length === 0) {
-        list.innerHTML = `<div style="padding: 12px; text-align: center; color: #94a3b8; font-size: 0.85rem;">No repositories found</div>`;
+    if (!reposList || reposList.length === 0) {
+        list.innerHTML = `<div class="gd-loading-box">No repositories found</div>`;
         return;
     }
     
     reposList.forEach(repo => {
         const option = document.createElement('div');
-        option.style.padding = "10px 12px";
-        option.style.borderRadius = "6px";
-        option.style.fontSize = "0.88rem";
-        option.style.color = "#334155";
-        option.style.cursor = "pointer";
-        option.style.transition = "background 0.15s";
-        option.style.display = "flex";
-        option.style.justifyContent = "space-between";
-        option.style.alignItems = "center";
-        
-        option.onmouseover = () => { option.style.background = "#f1f5f9"; };
-        option.onmouseout = () => { option.style.background = "transparent"; };
+        option.className = 'custom-select-option';
         
         const badge = repo.private ? 
-            `<span style="background: #fee2e2; color: #ef4444; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight:600;">Private</span>` : 
-            `<span style="background: #dcfce7; color: #16a34a; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight:600;">Public</span>`;
+            `<span style="background: #fef2f2; color: #dc2626; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; font-weight:700;">Private</span>` : 
+            `<span style="background: #f0fdf4; color: #16a34a; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; font-weight:700;">Public</span>`;
             
         option.innerHTML = `
-            <span>${repo.full_name}</span>
+            <span style="font-weight: 500;">${repo.full_name}</span>
             ${badge}
         `;
         
@@ -1161,31 +2332,32 @@ function filterGithubOptions() {
 }
 
 function selectGithubRepo(repo) {
-    document.getElementById('githubSelectLabel').textContent = repo.full_name;
-    document.getElementById('githubSelectLabel').style.color = "#1e293b";
+    const label = document.getElementById('githubSelectLabel');
+    if (label) {
+        label.textContent = repo.full_name;
+        label.style.color = "var(--gd-text-main)";
+        label.style.fontWeight = "600";
+    }
     
-    // Choose clone url depending on visibility
     const repoUrl = repo.private ? repo.ssh_url : repo.clone_url;
     document.getElementById('repoUrlInput').value = repoUrl;
     
-    // Fill branch
     const branchInput = document.querySelector('input[name="branch"]');
     if (branchInput) {
         branchInput.value = repo.branch || 'main';
     }
     
-    // Close dropdown
     toggleGithubDropdown();
 }
 
-// Close github dropdown if clicked outside
 document.addEventListener('click', function(event) {
     const container = document.getElementById('githubSelectContainer');
     if (container && !container.contains(event.target)) {
         const dropdown = document.getElementById('githubSelectDropdown');
         if (dropdown && dropdown.style.display === "block") {
             dropdown.style.display = "none";
-            document.getElementById('githubSelectArrow').style.transform = "none";
+            const arrow = document.getElementById('githubSelectArrow');
+            if (arrow) arrow.style.transform = "none";
         }
     }
 });
@@ -1197,58 +2369,16 @@ function switchGithubModalTab(tab) {
     const adminContent = document.getElementById('githubModalAdminContent');
     
     if (tab === 'user') {
-        if (userTab) {
-            userTab.style.borderColor = "{{ branding.brand_color|default:'#ef6d19' }}";
-            userTab.style.color = "{{ branding.brand_color|default:'#ef6d19' }}";
-        }
-        if (adminTab) {
-            adminTab.style.borderColor = "transparent";
-            adminTab.style.color = "#64748b";
-        }
+        if (userTab) userTab.classList.add('active');
+        if (adminTab) adminTab.classList.remove('active');
         if (userContent) userContent.style.display = "flex";
         if (adminContent) adminContent.style.display = "none";
     } else {
-        if (adminTab) {
-            adminTab.style.borderColor = "{{ branding.brand_color|default:'#ef6d19' }}";
-            adminTab.style.color = "{{ branding.brand_color|default:'#ef6d19' }}";
-        }
-        if (userTab) {
-            userTab.style.borderColor = "transparent";
-            userTab.style.color = "#64748b";
-        }
+        if (adminTab) adminTab.classList.add('active');
+        if (userTab) userTab.classList.remove('active');
         if (userContent) userContent.style.display = "none";
         if (adminContent) adminContent.style.display = "flex";
     }
-}
-
-function saveAdminSettings() {
-    const clientId = document.getElementById('githubClientIdInput').value.trim();
-    const clientSecret = document.getElementById('githubClientSecretInput').value.trim();
-    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
-    
-    const formData = new FormData();
-    formData.append('github_client_id', clientId);
-    formData.append('github_client_secret', clientSecret);
-    
-    fetch("{% url 'git_deploy_settings' %}", {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": csrfToken
-        },
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === "success") {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert("Error: " + data.message);
-        }
-    })
-    .catch(err => {
-        alert("Server error saving settings.");
-    });
 }
 
 function generateGithubManifest(event, button) {
@@ -1256,7 +2386,6 @@ function generateGithubManifest(event, button) {
     const host = window.location.host;
     const protocol = window.location.protocol;
     
-    // Dynamic App Manifest Configuration
     const manifest = {
         name: "OLSPanel Deploy App (" + host.split(':')[0] + ")",
         url: protocol + "//" + host,

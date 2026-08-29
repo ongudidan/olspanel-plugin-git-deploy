@@ -324,6 +324,7 @@ def create_deployment_view(request):
     domain_id = request.POST.get('domain_id')
     repo_url = request.POST.get('repo_url', '').strip()
     branch = request.POST.get('branch', 'main').strip() or 'main'
+    deploy_path = request.POST.get('deploy_path', '').strip()
     auto_configure = request.POST.get('auto_configure') == 'true' or request.POST.get('auto_configure') == 'on'
     
     # Auto-detect repository type based on URL format
@@ -340,6 +341,9 @@ def create_deployment_view(request):
         domain = get_object_or_404(Domain, id=domain_id)
     else:
         domain = get_object_or_404(Domain, id=domain_id, userid=user.id)
+
+    # Use user-specified deploy_path if provided, otherwise fallback to domain.path
+    final_deploy_path = os.path.normpath(deploy_path) if deploy_path else domain.path
 
     # Check for existing deployment on this domain
     with connection.cursor() as cursor:
@@ -441,7 +445,7 @@ def create_deployment_view(request):
         cursor.execute("""
             INSERT INTO git_deployments (userid_id, domain_id, repo_url, branch, deploy_path, webhook_secret, ssh_key, ssh_public_key, auto_configured, created_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, [user.id, domain.id, repo_url, branch, domain.path, webhook_secret, ssh_key, ssh_public_key, 1 if auto_configure else 0, datetime.now()])
+        """, [user.id, domain.id, repo_url, branch, final_deploy_path, webhook_secret, ssh_key, ssh_public_key, 1 if auto_configure else 0, datetime.now()])
 
     return JsonResponse({"status": "success", "message": "Deployment registered successfully"})
 
@@ -627,6 +631,41 @@ def delete_deployment_view(request, dep_id):
         cursor.execute("DELETE FROM git_deployments WHERE id = %s", [dep_id])
         
     return JsonResponse({"status": "success", "message": "Deployment configuration deleted"})
+
+
+@loginadminoruser
+def update_deployment_view(request, dep_id):
+    """Updates branch and deploy_path for an existing deployment"""
+    user = get_authenticated_user(request)
+    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    
+    if request.method != 'POST':
+        return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+        
+    branch = request.POST.get('branch', 'main').strip() or 'main'
+    deploy_path = request.POST.get('deploy_path', '').strip()
+    
+    if not deploy_path:
+        return JsonResponse({"status": "error", "message": "Deploy directory path cannot be empty"}, status=400)
+        
+    clean_path = os.path.normpath(deploy_path)
+    
+    with connection.cursor() as cursor:
+        if user.is_superuser or is_admin:
+            cursor.execute("SELECT id FROM git_deployments WHERE id = %s", [dep_id])
+        else:
+            cursor.execute("SELECT id FROM git_deployments WHERE id = %s AND userid_id = %s", [dep_id, user.id])
+            
+        if not cursor.fetchone():
+            return JsonResponse({"status": "error", "message": "Deployment config not found or access denied"}, status=404)
+            
+        cursor.execute("""
+            UPDATE git_deployments
+            SET branch = %s, deploy_path = %s
+            WHERE id = %s
+        """, [branch, clean_path, dep_id])
+        
+    return JsonResponse({"status": "success", "message": "Deployment configuration updated successfully"})
 
 
 @loginadminoruser
