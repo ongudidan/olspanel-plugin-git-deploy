@@ -3,1077 +3,47 @@
 {% block title %}Git Auto-Deploy Settings{% endblock title %}
 
 {% block content %}
-<!-- Scoped Design System Styles (Loaded first to eliminate any Flash of Unstyled Content / Layout Shift) -->
-<style>
-:root {
-    --gd-brand: {{ branding.brand_color|default:'#ef6d19' }};
-    --gd-brand-light: rgba(239, 109, 25, 0.08);
-    --gd-brand-hover: #d85d10;
-    --gd-bg-card: #ffffff;
-    --gd-border: #e2e8f0;
-    --gd-border-subtle: #f1f5f9;
-    --gd-text-main: #0f172a;
-    --gd-text-body: #334155;
-    --gd-text-muted: #64748b;
-    --gd-text-subtle: #94a3b8;
-    --gd-radius: 8px;
-    --gd-radius-sm: 6px;
-    --gd-shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
-    --gd-shadow-md: 0 4px 14px -2px rgba(15, 23, 42, 0.06);
-    --gd-shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-}
 
-.git-deploy-page {
-    padding: 0 0 24px 0;
-    width: 100%;
-    box-sizing: border-box;
-    font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: var(--gd-text-body);
-}
-
-/* Header Card */
-.gd-header-card {
-    background: #ffffff;
-    border: 1px solid var(--gd-border);
-    border-radius: var(--gd-radius);
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
-    box-shadow: var(--gd-shadow-sm);
-    flex-wrap: wrap;
-    width: 100%;
-    box-sizing: border-box;
-}
-.gd-header-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.gd-header-icon-wrap {
-    width: 38px;
-    height: 38px;
-    border-radius: var(--gd-radius-sm);
-    background: var(--gd-brand-light);
-    color: var(--gd-brand);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-.gd-page-title {
-    margin: 0;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--gd-text-main);
-    letter-spacing: -0.01em;
-}
-.gd-page-desc {
-    margin: 2px 0 0;
-    font-size: 0.8rem;
-    color: var(--gd-text-muted);
-}
-.gd-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Section Header */
-.gd-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    gap: 12px;
-    flex-wrap: wrap;
-    width: 100%;
-    box-sizing: border-box;
-}
-.gd-section-title-wrap {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.gd-section-title {
-    margin: 0;
-    font-size: 0.92rem;
-    font-weight: 700;
-    color: var(--gd-text-main);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-.gd-count-pill {
-    background: var(--gd-border-subtle);
-    color: var(--gd-text-muted);
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 1px 7px;
-    border-radius: 20px;
-}
-.gd-section-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.gd-search-mini {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: #ffffff;
-    border: 1px solid var(--gd-border);
-    border-radius: var(--gd-radius-sm);
-    padding: 4px 10px;
-    width: 200px;
-    transition: all 0.18s;
-}
-.gd-search-mini:focus-within {
-    border-color: var(--gd-brand);
-    box-shadow: 0 0 0 2px var(--gd-brand-light);
-}
-.gd-search-mini input {
-    border: none;
-    outline: none;
-    font-size: 0.8rem;
-    width: 100%;
-    color: var(--gd-text-main);
-    background: transparent;
-}
-
-/* Spinner */
-.gd-spin {
-    animation: gdSpin 0.75s linear infinite;
-}
-@keyframes gdSpin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Buttons */
-.gd-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: var(--gd-radius-sm);
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
-    text-decoration: none;
-    user-select: none;
-    white-space: nowrap;
-    line-height: 1.2;
-}
-.gd-btn-primary {
-    background: var(--gd-brand);
-    color: #ffffff;
-    border-color: var(--gd-brand);
-}
-.gd-btn-primary:hover {
-    background: var(--gd-brand-hover);
-    border-color: var(--gd-brand-hover);
-    color: #ffffff;
-}
-.gd-btn-outline {
-    background: #ffffff;
-    color: var(--gd-text-body);
-    border-color: #d1d5db;
-}
-.gd-btn-outline:hover {
-    background: var(--gd-border-subtle);
-    border-color: #9ca3af;
-    color: var(--gd-text-main);
-}
-.gd-btn-outline-danger {
-    background: #ffffff;
-    color: #dc2626;
-    border-color: #fca5a5;
-}
-.gd-btn-outline-danger:hover {
-    background: #fef2f2;
-    border-color: #ef4444;
-}
-.gd-btn-danger {
-    background: #dc2626;
-    color: #ffffff;
-    border-color: #dc2626;
-}
-.gd-btn-danger:hover {
-    background: #b91c1c;
-    border-color: #b91c1c;
-}
-.gd-btn-github {
-    background: #24292f;
-    color: #ffffff;
-    border-color: #24292f;
-}
-.gd-btn-github:hover {
-    background: #0f1419;
-    color: #ffffff;
-}
-.gd-btn-compact {
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    gap: 4px;
-}
-.gd-btn-icon-danger {
-    background: transparent;
-    color: var(--gd-text-subtle);
-    border: 1px solid transparent;
-    padding: 4px 6px;
-    border-radius: var(--gd-radius-sm);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-}
-.gd-btn-icon-danger:hover {
-    background: #fef2f2;
-    color: #dc2626;
-    border-color: #fecaca;
-}
-.gd-btn-inline-edit {
-    background: transparent;
-    border: none;
-    color: var(--gd-text-subtle);
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-    opacity: 0.65;
-}
-.gd-btn-inline-edit:hover {
-    background: #f1f5f9;
-    color: var(--gd-brand);
-    opacity: 1;
-}
-
-/* Empty State Card */
-.gd-empty-card {
-    background: #ffffff;
-    border: 1.5px dashed var(--gd-border);
-    border-radius: var(--gd-radius);
-    padding: 40px 20px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    box-sizing: border-box;
-}
-.gd-empty-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: var(--gd-border-subtle);
-    color: var(--gd-text-subtle);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
-}
-.gd-empty-title {
-    margin: 0 0 4px;
-    font-size: 0.96rem;
-    font-weight: 700;
-    color: var(--gd-text-main);
-}
-.gd-empty-desc {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--gd-text-muted);
-    max-width: 380px;
-}
-
-/* ULTRA-COMPACT TABLE LAYOUT */
-.gd-table-card {
-    background: #ffffff;
-    border: 1px solid var(--gd-border);
-    border-radius: var(--gd-radius);
-    box-shadow: var(--gd-shadow-sm);
-    overflow: hidden;
-    width: 100%;
-    box-sizing: border-box;
-}
-.gd-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.82rem;
-    color: var(--gd-text-body);
-}
-.gd-table thead th {
-    background: #f8fafc;
-    color: var(--gd-text-muted);
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 8px 14px;
-    border-bottom: 1px solid var(--gd-border);
-    white-space: nowrap;
-    text-align: left;
-}
-.gd-table tbody tr {
-    border-bottom: 1px solid var(--gd-border-subtle);
-    transition: background 0.12s;
-}
-.gd-table tbody tr:last-child {
-    border-bottom: none;
-}
-.gd-table tbody tr:hover {
-    background: #f8fafc;
-}
-.gd-table tbody td {
-    padding: 7px 14px;
-    vertical-align: middle;
-}
-
-/* Cells */
-.gd-domain-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-}
-.gd-domain-name {
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: var(--gd-text-main);
-}
-.gd-badge-auto {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 1px 5px;
-    border-radius: 3px;
-    background: #f0fdf4;
-    color: #166534;
-    border: 1px solid #bbf7d0;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-}
-.gd-badge-manual {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 1px 5px;
-    border-radius: 3px;
-    background: #ffffff;
-    color: var(--gd-text-body);
-    border: 1px solid #d1d5db;
-    cursor: pointer;
-    transition: all 0.12s;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-}
-.gd-badge-manual:hover {
-    background: #f1f5f9;
-    color: var(--gd-brand);
-}
-
-.gd-domain-repo-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-.gd-domain-line {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    white-space: nowrap;
-}
-.gd-repo-sub-line {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-}
-.gd-repo-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: #475569;
-    font-weight: 500;
-    text-decoration: none;
-    font-size: 0.76rem;
-    white-space: nowrap;
-    font-family: 'Fira Code', 'Courier New', monospace;
-    opacity: 0.88;
-}
-.gd-repo-link:hover {
-    color: #2563eb;
-    text-decoration: underline;
-    opacity: 1;
-}
-.gd-branch-pill {
-    background: #f1f5f9;
-    color: var(--gd-text-body);
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-weight: 600;
-    font-family: monospace;
-    font-size: 0.70rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    border: 1px solid var(--gd-border);
-}
-
-.gd-path-wrapper {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-}
-.gd-path-code {
-    color: var(--gd-text-body);
-    font-family: 'Fira Code', 'Courier New', monospace;
-    font-size: 0.78rem;
-    white-space: nowrap;
-    word-break: normal;
-    background: #f8fafc;
-    padding: 3px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--gd-border);
-    display: inline-block;
-}
-
-.gd-actions-cell {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    justify-content: flex-end;
-    white-space: nowrap;
-}
-
-/* MODALS SYSTEM (NO BLUR, SLEEK & PROFESSIONAL) */
-.gd-modal-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-}
-.gd-modal-box {
-    background: #ffffff;
-    border-radius: 8px;
-    max-width: 500px;
-    width: 100%;
-    border: 1px solid #e2e8f0;
-    box-shadow: var(--gd-shadow-lg);
-    overflow: hidden;
-    animation: gdModalIn 0.18s ease-out;
-}
-@keyframes gdModalIn {
-    from { opacity: 0; transform: scale(0.98) translateY(4px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.gd-modal-header {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--gd-border-subtle);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #ffffff;
-}
-.gd-modal-title {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--gd-text-main);
-}
-.gd-modal-close {
-    background: transparent;
-    border: none;
-    font-size: 1rem;
-    cursor: pointer;
-    color: var(--gd-text-subtle);
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.15s;
-}
-.gd-modal-close:hover {
-    background: var(--gd-border-subtle);
-    color: var(--gd-text-main);
-}
-
-.gd-modal-body {
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    max-height: 75vh;
-    overflow-y: auto;
-}
-.gd-modal-footer {
-    padding: 12px 18px;
-    border-top: 1px solid var(--gd-border-subtle);
-    background: #f8fafc;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-}
-
-/* Modal Tabs */
-.gd-modal-tabs {
-    display: flex;
-    background: #f8fafc;
-    border-bottom: 1px solid var(--gd-border);
-    padding: 0 18px;
-    gap: 16px;
-}
-.gd-modal-tab-btn {
-    background: transparent;
-    border: none;
-    padding: 9px 0;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--gd-text-muted);
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.18s;
-}
-.gd-modal-tab-btn.active {
-    color: var(--gd-brand);
-    border-bottom-color: var(--gd-brand);
-}
-
-/* Form Controls */
-.gd-form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-.gd-subgroup {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-.gd-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #374151;
-    display: block;
-}
-.gd-input {
-    width: 100%;
-    height: 38px;
-    padding: 0 11px;
-    border-radius: var(--gd-radius-sm);
-    border: 1px solid #d1d5db;
-    outline: none;
-    font-size: 0.85rem;
-    color: var(--gd-text-main);
-    background: #ffffff;
-    transition: all 0.18s;
-    box-sizing: border-box;
-}
-.gd-input:focus {
-    border-color: var(--gd-brand);
-    box-shadow: 0 0 0 2px var(--gd-brand-light);
-}
-.gd-code-font {
-    font-family: 'Fira Code', 'Courier New', monospace;
-    font-size: 0.78rem;
-}
-.gd-help-lead {
-    font-size: 0.82rem;
-    color: var(--gd-text-body);
-    line-height: 1.4;
-    margin: 0;
-}
-.gd-input-prefix-wrap {
-    position: relative;
-    width: 100%;
-}
-.gd-input-prefix {
-    position: absolute;
-    left: 11px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--gd-text-subtle);
-    display: flex;
-    align-items: center;
-    pointer-events: none;
-}
-
-/* Segmented Control Tabs */
-.gd-segmented-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3px;
-    background: #f1f5f9;
-    padding: 3px;
-    border-radius: var(--gd-radius-sm);
-}
-.gd-tab-btn {
-    border: none;
-    background: transparent;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 0.79rem;
-    font-weight: 600;
-    color: var(--gd-text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    transition: all 0.15s;
-}
-.gd-tab-btn.active {
-    background: #ffffff;
-    color: var(--gd-text-main);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-/* Toggle / Checkbox Card */
-.gd-toggle-card {
-    background: #f8fafc;
-    border: 1px solid var(--gd-border);
-    border-radius: var(--gd-radius-sm);
-    padding: 8px 10px;
-    margin-top: 4px;
-}
-.gd-checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    user-select: none;
-    margin: 0;
-}
-.gd-checkbox-label input[type="checkbox"] {
-    width: 15px;
-    height: 15px;
-    cursor: pointer;
-    accent-color: var(--gd-brand);
-    margin: 0;
-}
-.gd-checkbox-title {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--gd-text-main);
-}
-
-/* Custom Searchable Select */
-.custom-select-container {
-    position: relative;
-    width: 100%;
-}
-.custom-select-trigger {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 38px;
-    padding: 0 11px;
-    border-radius: var(--gd-radius-sm);
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    font-size: 0.85rem;
-    color: var(--gd-text-body);
-    cursor: pointer;
-    transition: all 0.18s;
-    user-select: none;
-}
-.custom-select-trigger:hover {
-    border-color: #9ca3af;
-}
-.custom-select-dropdown {
-    display: none;
-    position: absolute;
-    top: 42px;
-    left: 0;
-    right: 0;
-    background: #ffffff;
-    border: 1px solid var(--gd-border);
-    border-radius: var(--gd-radius-sm);
-    box-shadow: var(--gd-shadow-lg);
-    z-index: 2100;
-    overflow: hidden;
-}
-.gd-dropdown-search-wrap {
-    padding: 7px 9px;
-    border-bottom: 1px solid var(--gd-border-subtle);
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    background: #f8fafc;
-}
-.gd-dropdown-search-wrap input {
-    width: 100%;
-    border: none;
-    outline: none;
-    font-size: 0.82rem;
-    color: var(--gd-text-main);
-    background: transparent;
-}
-.gd-options-list {
-    max-height: 170px;
-    overflow-y: auto;
-    padding: 3px;
-}
-.custom-select-option {
-    padding: 6px 9px;
-    border-radius: 4px;
-    font-size: 0.81rem;
-    color: var(--gd-text-body);
-    cursor: pointer;
-    transition: background 0.12s;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.custom-select-option:hover {
-    background: var(--gd-border-subtle);
-    color: var(--gd-text-main);
-}
-.gd-no-options, .gd-loading-box {
-    padding: 10px;
-    text-align: center;
-    color: var(--gd-text-muted);
-    font-size: 0.78rem;
-}
-
-/* Copy Input Group */
-.gd-copy-input-group {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-}
-.gd-copy-input-group .gd-input {
-    flex: 1;
-}
-
-/* Alerts & Status Cards in Modals */
-.gd-alert {
-    border-radius: var(--gd-radius-sm);
-    padding: 9px 11px;
-    font-size: 0.78rem;
-    line-height: 1.35;
-}
-.gd-alert-danger {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #b91c1c;
-}
-.gd-alert-warning {
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    color: #92400e;
-}
-.gd-alert-success {
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    color: #166534;
-}
-.gd-alert-info {
-    background: #f8fafc;
-    border: 1px solid var(--gd-border);
-    border-left: 3px solid var(--gd-brand);
-    color: var(--gd-text-body);
-}
-
-.gd-connected-card, .gd-disconnected-card {
-    text-align: center;
-    padding: 8px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-.gd-connected-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    color: #16a34a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
-}
-.gd-github-hero-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: #f8fafc;
-    border: 1px solid var(--gd-border);
-    color: #24292f;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
-}
-.gd-connected-title, .gd-disconnected-title {
-    margin: 0 0 3px;
-    font-size: 0.98rem;
-    font-weight: 700;
-    color: var(--gd-text-main);
-}
-.gd-connected-desc, .gd-disconnected-desc {
-    margin: 0 0 14px;
-    font-size: 0.8rem;
-    color: var(--gd-text-muted);
-    max-width: 340px;
-    line-height: 1.4;
-}
-.gd-btn-group-center {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-.gd-info-callout {
-    background: #f8fafc;
-    border: 1px solid var(--gd-border);
-    border-radius: var(--gd-radius-sm);
-    padding: 9px 11px;
-    font-size: 0.76rem;
-    color: var(--gd-text-muted);
-}
-.gd-info-callout h6 {
-    margin: 0 0 3px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--gd-text-body);
-}
-.gd-link-highlight {
-    color: var(--gd-brand);
-    font-weight: 600;
-    text-decoration: none;
-}
-.gd-link-highlight:hover {
-    text-decoration: underline;
-}
-
-/* DRAWER / SLIDE-OVER (NO BLUR) */
-.gd-drawer-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    z-index: 2000;
-    justify-content: flex-end;
-}
-.gd-drawer-panel {
-    background: #ffffff;
-    width: 100%;
-    max-width: 620px;
-    height: 100vh;
-    border-left: 1px solid var(--gd-border);
-    box-shadow: -6px 0 20px 0 rgba(0,0,0,0.08);
-    display: flex;
-    flex-direction: column;
-    animation: gdDrawerIn 0.22s ease-out;
-}
-@keyframes gdDrawerIn {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
-}
-.gd-drawer-header {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--gd-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #ffffff;
-    flex-shrink: 0;
-}
-.gd-drawer-title {
-    margin: 0;
-    font-size: 0.98rem;
-    font-weight: 700;
-    color: var(--gd-text-main);
-}
-.gd-terminal-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #10b981;
-    display: inline-block;
-}
-.gd-drawer-body {
-    flex: 1;
-    padding: 16px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    background: #f8fafc;
-}
-
-/* Log Accordion Item */
-.log-accordion {
-    border: 1px solid var(--gd-border);
-    border-radius: var(--gd-radius-sm);
-    overflow: hidden;
-    background: #ffffff;
-    box-shadow: var(--gd-shadow-sm);
-    transition: all 0.15s ease;
-    flex-shrink: 0;
-}
-.log-accordion:hover {
-    border-color: #cbd5e1;
-}
-.log-header {
-    padding: 12px 14px;
-    background: #ffffff;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    user-select: none;
-    border-bottom: 1px solid transparent;
-    transition: background 0.12s;
-    gap: 12px;
-}
-.log-header:hover {
-    background: #f8fafc;
-}
-.log-header-main {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    min-width: 0;
-    flex: 1;
-}
-.log-status-dot-wrap {
-    flex-shrink: 0;
-    padding-top: 3px;
-}
-.log-header-text {
-    min-width: 0;
-    flex: 1;
-}
-.log-commit-title {
-    font-weight: 600;
-    font-size: 0.84rem;
-    color: var(--gd-text-main);
-    line-height: 1.3;
-    word-break: break-word;
-}
-.log-meta-line {
-    font-size: 0.72rem;
-    color: var(--gd-text-muted);
-    margin-top: 3px;
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-.log-hash-badge {
-    font-size: 0.7rem;
-    font-family: monospace;
-    background: #f1f5f9;
-    padding: 1px 4px;
-    border-radius: 3px;
-    color: var(--gd-text-body);
-    font-weight: 600;
-}
-.log-header-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-}
-.log-status-text {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-}
-.log-arrow {
-    font-size: 0.7rem;
-    color: #94a3b8;
-    transition: transform 0.15s;
-}
-.log-body {
-    padding: 14px;
-    background: #0f172a;
-    color: #e2e8f0;
-    font-family: 'Fira Code', 'Courier New', monospace;
-    font-size: 0.76rem;
-    white-space: pre-wrap;
-    word-break: break-all;
-    display: none;
-    border-top: 1px solid #1e293b;
-    line-height: 1.5;
-    max-height: 450px;
-    overflow-y: auto;
-}
-</style>
-
-<div class="git-deploy-page">
+<div class="space-y-5">
 
     <!-- Page Header Bar -->
-    <div class="gd-header-card">
-        <div class="gd-header-info">
-            <div class="gd-header-icon-wrap">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="18" cy="18" r="3"></circle>
-                    <circle cx="6" cy="6" r="3"></circle>
-                    <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
-                    <line x1="6" y1="9" x2="6" y2="21"></line>
-                </svg>
+    <div class="bg-white border border-slate-200 rounded-lg p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-brand border border-emerald-100 flex items-center justify-center shrink-0">
+                <i class="mdi mdi-git text-2xl"></i>
             </div>
             <div>
-                <h4 class="gd-page-title">Git Auto-Deploy</h4>
-                <p class="gd-page-desc">Automate production deployments on every GitHub or Git push</p>
+                <h4 class="text-base font-bold text-slate-900 m-0 leading-tight">Git Auto-Deploy</h4>
+                <p class="text-xs text-slate-500 m-0 mt-0.5">Automate production deployments on every GitHub or Git push</p>
             </div>
         </div>
-        <div class="gd-header-actions">
-            <button onclick="openModal('githubTokenModal')" class="gd-btn gd-btn-outline" title="Configure GitHub Account or GitHub App">
-                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        <div class="flex items-center gap-2.5 flex-wrap">
+            <button type="button" onclick="openModal('githubTokenModal')" class="inline-flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-md text-xs font-semibold shadow-xs transition-colors" title="Configure GitHub Account or GitHub App">
+                <i class="mdi mdi-github text-base leading-none"></i>
                 <span>{% if has_github_token %}GitHub Connected{% else %}Connect GitHub{% endif %}</span>
             </button>
-            <button onclick="openModal('addConnectionModal')" class="gd-btn gd-btn-primary">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <button type="button" onclick="openModal('addConnectionModal')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
+                <i class="mdi mdi-plus text-base leading-none"></i>
                 <span>Connect Repository</span>
             </button>
         </div>
     </div>
 
     <!-- Active Deployments Section Header -->
-    <div class="gd-section-header">
-        <div class="gd-section-title-wrap">
-            <h5 class="gd-section-title">Active Connections</h5>
-            <span class="gd-count-pill" id="connectionsCountPill">{{ deployments|length }}</span>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+            <h5 class="text-xs font-bold text-slate-900 uppercase tracking-wider m-0">Active Connections</h5>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200 font-mono" id="connectionsCountPill">{{ deployments|length }}</span>
         </div>
-        <div class="gd-section-actions">
+        <div class="flex items-center gap-2.5">
             {% if deployments %}
-            <div class="gd-search-mini">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" id="filterConnectionsInput" placeholder="Filter connections..." oninput="filterConnections()">
+            <div class="relative">
+                <i class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="filterConnectionsInput" placeholder="Filter connections..." oninput="filterConnections()" class="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand w-48 sm:w-56 transition-all">
             </div>
             {% endif %}
-            <button type="button" id="btnRefreshTable" onclick="refreshDeploymentsTable(this)" class="gd-btn gd-btn-outline gd-btn-compact" title="Refresh connections table">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <button type="button" id="btnRefreshTable" onclick="refreshDeploymentsTable(this)" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors" title="Refresh connections table">
+                <i class="mdi mdi-refresh text-sm leading-none" id="refreshIcon"></i>
                 <span>Refresh</span>
             </button>
         </div>
@@ -1082,98 +52,96 @@
     <div id="tableContainerWrapper">
         {% if not deployments %}
         <!-- Empty State -->
-        <div class="gd-empty-card">
-            <div class="gd-empty-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
+        <div class="bg-white border border-slate-200 rounded-lg p-10 text-center shadow-xs">
+            <div class="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                <i class="mdi mdi-source-repository-multiple text-3xl"></i>
             </div>
-            <h6 class="gd-empty-title">No connected repositories found</h6>
-            <p class="gd-empty-desc">Link a domain to a Git repository to enable automated deployments on push.</p>
-            <button onclick="openModal('addConnectionModal')" class="gd-btn gd-btn-primary" style="margin-top: 14px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <h6 class="text-sm font-bold text-slate-900 mb-1">No connected repositories found</h6>
+            <p class="text-xs text-slate-500 max-w-md mx-auto mb-4">Link a domain to a Git repository to enable automated continuous deployments on push.</p>
+            <button type="button" onclick="openModal('addConnectionModal')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
+                <i class="mdi mdi-plus text-sm"></i>
                 <span>Connect First Repository</span>
             </button>
         </div>
         {% else %}
-        <!-- Ultra-Sleek Compact Table Layout with Numbering -->
-        <div class="gd-table-card">
-            <div class="table-responsive">
-                <table class="gd-table" id="deploymentsTable">
-                    <thead>
+        <!-- Deployments Table Card -->
+        <div class="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-700" id="deploymentsTable">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                         <tr>
-                            <th style="width: 4%; text-align: center;">#</th>
-                            <th style="width: 34%;">Domain & Repository</th>
-                            <th style="width: 44%;">Deploy Path</th>
-                            <th style="width: 18%; text-align: right;">Actions</th>
+                            <th class="py-3 px-3 text-center w-10">#</th>
+                            <th class="py-3 px-4 w-5/12">Domain &amp; Repository</th>
+                            <th class="py-3 px-4 w-4/12">Deploy Path</th>
+                            <th class="py-3 px-4 text-right w-3/12">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-slate-100">
                         {% for dep in deployments %}
-                        <tr id="depRow_{{ dep.id }}" data-domain="{{ dep.domain|lower }}" data-repo="{{ dep.repo_url|lower }}">
+                        <tr id="depRow_{{ dep.id }}" data-domain="{{ dep.domain|lower }}" data-repo="{{ dep.repo_url|lower }}" class="hover:bg-slate-50/60 transition-colors">
                             
                             <!-- Col 0: Row Numbering -->
-                            <td style="text-align: center; color: var(--gd-text-subtle); font-weight: 600; font-size: 0.75rem;">
+                            <td class="py-3.5 px-3 text-center font-mono font-bold text-slate-400 text-[11px]">
                                 {{ forloop.counter }}
                             </td>
 
-                            <!-- Col 1: Domain & Repository (Stacked) -->
-                            <td>
-                                <div class="gd-domain-repo-cell">
-                                    <div class="gd-domain-line">
-                                        <span class="gd-domain-name" title="{{ dep.domain }}">{{ dep.domain }}</span>
-                                        <span class="gd-branch-pill" title="Target deploy branch">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                            <!-- Col 1: Domain & Repository -->
+                            <td class="py-3.5 px-4">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-bold text-slate-900 text-xs" title="{{ dep.domain }}">{{ dep.domain }}</span>
+                                        
+                                        <!-- Branch Pill -->
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200" title="Target deploy branch">
+                                            <i class="mdi mdi-source-branch text-xs text-slate-500"></i>
                                             {{ dep.branch }}
                                         </span>
+
                                         {% if dep.auto_configured %}
-                                        <span class="gd-badge-auto" title="Auto-managed on GitHub">
-                                            <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title="Auto-managed on GitHub">
+                                            <i class="mdi mdi-lightning-bolt text-xs"></i>
                                             Auto
                                         </span>
                                         {% else %}
-                                        <button type="button" onclick="openWebhookModal('{{ dep.id }}', '{{ dep.domain|escapejs }}', '{{ webhook_url }}?secret={{ dep.webhook_secret }}', '{{ dep.ssh_public_key|default:''|escapejs }}')" class="gd-badge-manual" title="View Webhook URL & Deploy Key">
-                                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        <button type="button" onclick="openWebhookModal('{{ dep.id }}', '{{ dep.domain|escapejs }}', '{{ webhook_url }}?secret={{ dep.webhook_secret }}', '{{ dep.ssh_public_key|default:''|escapejs }}')" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors" title="View Webhook URL & Deploy Key">
+                                            <i class="mdi mdi-key-variant text-xs"></i>
                                             Keys
                                         </button>
                                         {% endif %}
                                     </div>
-                                    <div class="gd-repo-sub-line">
-                                        <a href="{{ dep.repo_url }}" target="_blank" class="gd-repo-link" title="{{ dep.repo_url }}">
-                                            <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                                            <span>{{ dep.repo_url }}</span>
+                                    <div class="flex items-center gap-1 text-[11px] text-slate-500 font-mono">
+                                        <a href="{{ dep.repo_url }}" target="_blank" class="hover:text-brand inline-flex items-center gap-1 truncate max-w-xs sm:max-w-md transition-colors" title="{{ dep.repo_url }}">
+                                            <i class="mdi mdi-git text-slate-400"></i>
+                                            <span class="truncate">{{ dep.repo_url }}</span>
+                                            <i class="mdi mdi-open-in-new text-[10px] text-slate-400"></i>
                                         </a>
                                     </div>
                                 </div>
                             </td>
 
                             <!-- Col 2: Deploy Path -->
-                            <td>
-                                <div class="gd-path-wrapper">
-                                    <code class="gd-path-code" title="{{ dep.deploy_path }}">{{ dep.deploy_path }}</code>
-                                    <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.deploy_path|escapejs }}')" class="gd-btn-inline-edit" title="Click to edit deploy path">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <td class="py-3.5 px-4">
+                                <div class="inline-flex items-center gap-1.5 max-w-full">
+                                    <code class="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-mono text-slate-700 truncate max-w-xs" title="{{ dep.deploy_path }}">{{ dep.deploy_path }}</code>
+                                    <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.deploy_path|escapejs }}')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors" title="Edit deploy path">
+                                        <i class="mdi mdi-pencil text-xs"></i>
                                     </button>
                                 </div>
                             </td>
 
-                            <!-- Col 4: Actions -->
-                            <td style="text-align: right;">
-                                <div class="gd-actions-cell">
-                                    <button onclick="triggerManualDeploy({{ dep.id }}, this)" class="gd-btn gd-btn-primary gd-btn-compact" title="Run manual deploy now">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            <!-- Col 3: Actions -->
+                            <td class="py-3.5 px-4 text-right">
+                                <div class="inline-flex items-center gap-1.5 justify-end">
+                                    <button type="button" onclick="triggerManualDeploy({{ dep.id }}, this)" class="inline-flex items-center gap-1 px-2.5 py-1 bg-brand hover:bg-brand/90 text-white rounded text-xs font-semibold shadow-2xs transition-colors" title="Run manual deploy now">
+                                        <i class="mdi mdi-play text-xs"></i>
                                         <span>Deploy</span>
                                     </button>
-                                    <button onclick="openLogsModal({{ dep.id }})" class="gd-btn gd-btn-outline gd-btn-compact" title="View deployment history and logs">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                    <button type="button" onclick="openLogsModal({{ dep.id }})" class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold transition-colors" title="View deployment history and logs">
+                                        <i class="mdi mdi-text-box-outline text-xs"></i>
                                         <span>Logs</span>
                                     </button>
-                                    <button onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.deploy_path|escapejs }}')" class="gd-btn gd-btn-outline gd-btn-compact" title="Edit deployment directory path or branch">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                        <span>Edit</span>
-                                    </button>
-                                    <button onclick="confirmDelete({{ dep.id }})" class="gd-btn gd-btn-icon-danger" title="Delete connection link">
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                    <button type="button" onclick="confirmDelete({{ dep.id }})" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors" title="Delete connection link">
+                                        <i class="mdi mdi-trash-can-outline text-sm"></i>
                                     </button>
                                 </div>
                             </td>
@@ -1188,50 +156,56 @@
     </div>
 
     <!-- MODAL 1: Connect Repository Modal -->
-    <div id="addConnectionModal" class="gd-modal-backdrop" onclick="handleBackdropClick(event, 'addConnectionModal')">
-        <div class="gd-modal-box">
+    <div id="addConnectionModal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4" onclick="handleBackdropClick(event, 'addConnectionModal')">
+        <div class="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             
-            <div class="gd-modal-header">
-                <h5 class="gd-modal-title">Connect Repository</h5>
-                <button onclick="closeModal('addConnectionModal')" class="gd-modal-close" aria-label="Close">✕</button>
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h5 class="text-sm font-bold text-slate-900 m-0 flex items-center gap-2">
+                    <i class="mdi mdi-plus-circle-outline text-brand text-base"></i> Connect Repository
+                </h5>
+                <button type="button" onclick="closeModal('addConnectionModal')" class="text-slate-400 hover:text-slate-700 transition-colors" aria-label="Close">
+                    <i class="mdi mdi-close text-lg"></i>
+                </button>
             </div>
 
-            <form id="createDeploymentForm" onsubmit="submitCreateForm(event)">
+            <form id="createDeploymentForm" onsubmit="submitCreateForm(event)" class="flex flex-col flex-1 overflow-hidden">
                 {% csrf_token %}
-                <div class="gd-modal-body">
-                    <div id="createFormError" class="gd-alert gd-alert-danger" style="display: none;"></div>
+                <div class="p-5 space-y-4 overflow-y-auto flex-1">
+                    <div id="createFormError" class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-md hidden"></div>
                     
                     <!-- Domain Selection -->
-                    <div class="gd-form-group">
-                        <label class="gd-label">Target Domain / Subdomain</label>
-                        <div class="custom-select-container" id="domainSelectContainer">
-                            <select name="domain_id" id="hiddenDomainSelect" required style="display: none;">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold text-slate-700">Target Domain / Subdomain</label>
+                        <div class="relative" id="domainSelectContainer">
+                            <select name="domain_id" id="hiddenDomainSelect" required class="hidden">
                                 <option value="" disabled selected>-- Choose a domain --</option>
                                 {% for dom in domains %}
                                     <option value="{{ dom.id }}" data-path="{{ dom.path }}">{{ dom.domain }}</option>
                                 {% endfor %}
                             </select>
                             
-                            <div class="custom-select-trigger" onclick="toggleCustomDropdown()">
-                                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>
-                                    <span id="customSelectLabel">-- Choose a domain --</span>
+                            <div class="w-full px-3 py-2 bg-white border border-slate-200 rounded-md text-xs text-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-colors" onclick="toggleCustomDropdown()" id="customSelectTrigger">
+                                <div class="flex items-center gap-2 truncate">
+                                    <i class="mdi mdi-web text-slate-400 text-sm"></i>
+                                    <span id="customSelectLabel" class="text-slate-500">-- Choose a domain --</span>
                                 </div>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="customSelectArrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <i class="mdi mdi-chevron-down text-slate-400 transition-transform" id="customSelectArrow"></i>
                             </div>
                             
-                            <div class="custom-select-dropdown" id="customSelectDropdown">
-                                <div class="gd-dropdown-search-wrap">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                    <input type="text" id="customSelectSearch" placeholder="Search domains..." oninput="filterCustomOptions()">
+                            <div class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 hidden" id="customSelectDropdown">
+                                <div class="p-2 border-b border-slate-100">
+                                    <div class="relative">
+                                        <i class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" id="customSelectSearch" placeholder="Search domains..." oninput="filterCustomOptions()" class="w-full pl-7 pr-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-slate-800 focus:outline-none focus:border-brand">
+                                    </div>
                                 </div>
-                                <div id="customSelectOptionsList" class="gd-options-list">
+                                <div id="customSelectOptionsList" class="max-h-48 overflow-y-auto divide-y divide-slate-50 text-xs">
                                     {% for dom in domains %}
-                                        <div class="custom-select-option" data-value="{{ dom.id }}" data-path="{{ dom.path }}" onclick="selectCustomOption('{{ dom.id }}', '{{ dom.domain|escapejs }}', '{{ dom.path|escapejs }}')">
+                                        <div class="px-3 py-2 cursor-pointer hover:bg-emerald-50 hover:text-brand transition-colors custom-select-option" data-value="{{ dom.id }}" data-path="{{ dom.path }}" onclick="selectCustomOption('{{ dom.id }}', '{{ dom.domain|escapejs }}', '{{ dom.path|escapejs }}')">
                                             {{ dom.domain }}
                                         </div>
                                     {% endfor %}
-                                    <div id="noDomainsFound" class="gd-no-options" style="display: none;">
+                                    <div id="noDomainsFound" class="px-3 py-3 text-center text-slate-400 hidden">
                                         No matching domains found
                                     </div>
                                 </div>
@@ -1240,55 +214,55 @@
                     </div>
 
                     <!-- Deployment Directory Path Input -->
-                    <div class="gd-form-group">
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <label class="gd-label">Deployment Directory Path</label>
-                            <span style="font-size: 0.72rem; color: var(--gd-text-muted);">Editable root folder</span>
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-semibold text-slate-700">Deployment Directory Path</label>
+                            <span class="text-[11px] text-slate-400">Target document root</span>
                         </div>
-                        <div class="gd-input-prefix-wrap">
-                            <span class="gd-input-prefix">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                            </span>
-                            <input type="text" name="deploy_path" id="deployPathInput" required placeholder="/home/username/public_html" class="gd-input gd-code-font" style="padding-left: 34px;">
+                        <div class="relative">
+                            <i class="mdi mdi-folder-outline absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" name="deploy_path" id="deployPathInput" required placeholder="/home/username/public_html" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
                         </div>
                     </div>
 
                     <!-- Repository Selection Source -->
-                    <div class="gd-form-group">
+                    <div class="space-y-2">
                         {% if has_github_token %}
                         <!-- Segmented Switcher -->
-                        <div class="gd-segmented-tabs">
-                            <button type="button" id="tabSelectRepo" class="gd-tab-btn active" onclick="switchRepoTab('select')">
-                                <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                                GitHub Repositories
+                        <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold">
+                            <button type="button" id="tabSelectRepo" class="py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 bg-white text-brand shadow-xs" onclick="switchRepoTab('select')">
+                                <i class="mdi mdi-github text-sm"></i>
+                                <span>GitHub Repositories</span>
                             </button>
-                            <button type="button" id="tabManualRepo" class="gd-tab-btn" onclick="switchRepoTab('manual')">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                                Custom Git URL
+                            <button type="button" id="tabManualRepo" class="py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900" onclick="switchRepoTab('manual')">
+                                <i class="mdi mdi-link-variant text-sm"></i>
+                                <span>Custom Git URL</span>
                             </button>
                         </div>
                         {% endif %}
 
                         <!-- GitHub Repo Picker -->
                         {% if has_github_token %}
-                        <div id="githubSelectRepoContainer" class="gd-subgroup">
-                            <label class="gd-label">Choose GitHub Repository</label>
-                            <div class="custom-select-container" id="githubSelectContainer">
-                                <div class="custom-select-trigger" id="githubSelectTrigger" onclick="toggleGithubDropdown()">
-                                    <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
-                                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                                        <span id="githubSelectLabel">Click to select repository...</span>
+                        <div id="githubSelectRepoContainer" class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-slate-700">Choose GitHub Repository</label>
+                            <div class="relative" id="githubSelectContainer">
+                                <div class="w-full px-3 py-2 bg-white border border-slate-200 rounded-md text-xs text-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-colors" id="githubSelectTrigger" onclick="toggleGithubDropdown()">
+                                    <div class="flex items-center gap-2 truncate">
+                                        <i class="mdi mdi-github text-slate-400 text-sm"></i>
+                                        <span id="githubSelectLabel" class="text-slate-500">Click to select repository...</span>
                                     </div>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="githubSelectArrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    <i class="mdi mdi-chevron-down text-slate-400 transition-transform" id="githubSelectArrow"></i>
                                 </div>
                                 
-                                <div class="custom-select-dropdown" id="githubSelectDropdown">
-                                    <div class="gd-dropdown-search-wrap">
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                        <input type="text" id="githubSelectSearch" placeholder="Search repositories..." oninput="filterGithubOptions()">
+                                <div class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 hidden" id="githubSelectDropdown">
+                                    <div class="p-2 border-b border-slate-100">
+                                        <div class="relative">
+                                            <i class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                            <input type="text" id="githubSelectSearch" placeholder="Search repositories..." oninput="filterGithubOptions()" class="w-full pl-7 pr-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-slate-800 focus:outline-none focus:border-brand">
+                                        </div>
                                     </div>
-                                    <div id="githubSelectOptionsList" class="gd-options-list">
-                                        <div class="gd-loading-box" id="githubReposLoading">Loading repositories...</div>
+                                    <div id="githubSelectOptionsList" class="max-h-48 overflow-y-auto divide-y divide-slate-50 text-xs">
+                                        <div class="p-4 text-center text-slate-400" id="githubReposLoading">Loading repositories...</div>
                                     </div>
                                 </div>
                             </div>
@@ -1296,39 +270,40 @@
                         {% endif %}
 
                         <!-- Manual Git URL Input -->
-                        <div id="manualRepoUrlContainer" class="gd-subgroup" style="display: {% if has_github_token %}none{% else %}block{% endif %};">
-                            <label class="gd-label">Git Repository URL</label>
-                            <input type="text" name="repo_url" id="repoUrlInput" {% if not has_github_token %}required{% endif %} placeholder="e.g. git@github.com:username/repo.git or https://..." class="gd-input">
+                        <div id="manualRepoUrlContainer" class="space-y-1.5 {% if has_github_token %}hidden{% endif %}">
+                            <label class="block text-xs font-semibold text-slate-700">Git Repository URL</label>
+                            <div class="relative">
+                                <i class="mdi mdi-git absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                <input type="text" name="repo_url" id="repoUrlInput" {% if not has_github_token %}required{% endif %} placeholder="git@github.com:user/repo.git or https://..." class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
+                            </div>
                         </div>
 
                         <!-- Auto-configure checkbox -->
                         {% if has_github_token %}
-                        <div id="autoConfigureContainer" class="gd-toggle-card">
-                            <label class="gd-checkbox-label">
-                                <input type="checkbox" name="auto_configure" id="autoConfigureCheckbox" checked>
-                                <span class="gd-checkbox-title">Auto-configure Webhook & Deploy Key on GitHub</span>
+                        <div id="autoConfigureContainer" class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-2.5">
+                            <input type="checkbox" name="auto_configure" id="autoConfigureCheckbox" checked class="w-4 h-4 text-brand rounded border-slate-300 focus:ring-brand">
+                            <label for="autoConfigureCheckbox" class="text-xs font-medium text-slate-700 cursor-pointer">
+                                Auto-configure Webhook &amp; Deploy Key on GitHub automatically
                             </label>
                         </div>
                         {% endif %}
                     </div>
 
                     <!-- Branch Input -->
-                    <div class="gd-form-group">
-                        <label class="gd-label">Target Deploy Branch</label>
-                        <div class="gd-input-prefix-wrap">
-                            <span class="gd-input-prefix">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-                            </span>
-                            <input type="text" name="branch" value="main" placeholder="main" class="gd-input" style="padding-left: 34px;">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold text-slate-700">Target Deploy Branch</label>
+                        <div class="relative">
+                            <i class="mdi mdi-source-branch absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" name="branch" value="main" placeholder="main" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
                         </div>
                     </div>
 
                 </div>
 
                 <!-- Footer -->
-                <div class="gd-modal-footer">
-                    <button type="button" onclick="closeModal('addConnectionModal')" class="gd-btn gd-btn-outline">Cancel</button>
-                    <button type="submit" id="btnConnectRepo" class="gd-btn gd-btn-primary">
+                <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                    <button type="button" onclick="closeModal('addConnectionModal')" class="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors">Cancel</button>
+                    <button type="submit" id="btnConnectRepo" class="px-4 py-2 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5">
                         <span>Connect Repository</span>
                     </button>
                 </div>
@@ -1337,52 +312,52 @@
         </div>
     </div>
 
-    <!-- MODAL 4: Edit Connection Modal -->
-    <div id="editConnectionModal" class="gd-modal-backdrop" onclick="handleBackdropClick(event, 'editConnectionModal')">
-        <div class="gd-modal-box">
+    <!-- MODAL 2: Edit Connection Modal -->
+    <div id="editConnectionModal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4" onclick="handleBackdropClick(event, 'editConnectionModal')">
+        <div class="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             
-            <div class="gd-modal-header">
-                <h5 class="gd-modal-title" id="editModalTitle">Edit Connection Settings</h5>
-                <button onclick="closeModal('editConnectionModal')" class="gd-modal-close" aria-label="Close">✕</button>
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h5 class="text-sm font-bold text-slate-900 m-0 flex items-center gap-2" id="editModalTitle">
+                    <i class="mdi mdi-pencil-outline text-brand text-base"></i> Edit Connection Settings
+                </h5>
+                <button type="button" onclick="closeModal('editConnectionModal')" class="text-slate-400 hover:text-slate-700 transition-colors" aria-label="Close">
+                    <i class="mdi mdi-close text-lg"></i>
+                </button>
             </div>
 
             <form id="editDeploymentForm" onsubmit="submitEditForm(event)">
                 {% csrf_token %}
                 <input type="hidden" id="editDepId" name="dep_id">
                 
-                <div class="gd-modal-body">
-                    <div id="editFormError" class="gd-alert gd-alert-danger" style="display: none;"></div>
+                <div class="p-5 space-y-4">
+                    <div id="editFormError" class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-md hidden"></div>
                     
-                    <p class="gd-help-lead">Update the deployment destination folder or target branch for <strong id="editModalDomainName"></strong>.</p>
+                    <p class="text-xs text-slate-600">Update the deployment destination folder or target branch for <strong id="editModalDomainName" class="text-slate-900"></strong>.</p>
 
                     <!-- Deployment Directory Path -->
-                    <div class="gd-form-group">
-                        <label class="gd-label">Deployment Directory Path</label>
-                        <div class="gd-input-prefix-wrap">
-                            <span class="gd-input-prefix">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                            </span>
-                            <input type="text" name="deploy_path" id="editDeployPathInput" required placeholder="/home/username/public_html" class="gd-input gd-code-font" style="padding-left: 34px;">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold text-slate-700">Deployment Directory Path</label>
+                        <div class="relative">
+                            <i class="mdi mdi-folder-outline absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" name="deploy_path" id="editDeployPathInput" required placeholder="/home/username/public_html" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
                         </div>
-                        <span style="font-size: 0.72rem; color: var(--gd-text-muted);">Future git pushes and manual deployments will checkout files into this path.</span>
+                        <span class="text-[11px] text-slate-400 block">Future git pushes and deployments will sync files into this directory.</span>
                     </div>
 
                     <!-- Target Branch -->
-                    <div class="gd-form-group">
-                        <label class="gd-label">Target Deploy Branch</label>
-                        <div class="gd-input-prefix-wrap">
-                            <span class="gd-input-prefix">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-                            </span>
-                            <input type="text" name="branch" id="editBranchInput" required placeholder="main" class="gd-input" style="padding-left: 34px;">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold text-slate-700">Target Deploy Branch</label>
+                        <div class="relative">
+                            <i class="mdi mdi-source-branch absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" name="branch" id="editBranchInput" required placeholder="main" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
                         </div>
                     </div>
 
                 </div>
 
-                <div class="gd-modal-footer">
-                    <button type="button" onclick="closeModal('editConnectionModal')" class="gd-btn gd-btn-outline">Cancel</button>
-                    <button type="submit" id="btnSaveEdit" class="gd-btn gd-btn-primary">
+                <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                    <button type="button" onclick="closeModal('editConnectionModal')" class="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors">Cancel</button>
+                    <button type="submit" id="btnSaveEdit" class="px-4 py-2 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
                         <span>Save Changes</span>
                     </button>
                 </div>
@@ -1391,63 +366,67 @@
         </div>
     </div>
 
-    <!-- MODAL 2: GitHub Integration Modal -->
-    <div id="githubTokenModal" class="gd-modal-backdrop" onclick="handleBackdropClick(event, 'githubTokenModal')">
-        <div class="gd-modal-box" style="max-width: 460px;">
+    <!-- MODAL 3: GitHub Integration Modal -->
+    <div id="githubTokenModal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4" onclick="handleBackdropClick(event, 'githubTokenModal')">
+        <div class="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             
-            <div class="gd-modal-header">
-                <h5 class="gd-modal-title">GitHub Integration</h5>
-                <button onclick="closeModal('githubTokenModal')" class="gd-modal-close" aria-label="Close">✕</button>
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h5 class="text-sm font-bold text-slate-900 m-0 flex items-center gap-2">
+                    <i class="mdi mdi-github text-xl text-slate-900"></i> GitHub Integration
+                </h5>
+                <button type="button" onclick="closeModal('githubTokenModal')" class="text-slate-400 hover:text-slate-700 transition-colors" aria-label="Close">
+                    <i class="mdi mdi-close text-lg"></i>
+                </button>
             </div>
 
             <!-- Admin Segmented Tabs -->
             {% if is_admin %}
-            <div class="gd-modal-tabs">
-                <button type="button" id="tabGithubUser" class="gd-modal-tab-btn active" onclick="switchGithubModalTab('user')">User Connection</button>
-                <button type="button" id="tabGithubAdmin" class="gd-modal-tab-btn" onclick="switchGithubModalTab('admin')">Server App Settings</button>
+            <div class="grid grid-cols-2 p-1 bg-slate-100 border-b border-slate-200 text-xs font-semibold">
+                <button type="button" id="tabGithubUser" class="py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 bg-white text-brand shadow-xs" onclick="switchGithubModalTab('user')">User Connection</button>
+                <button type="button" id="tabGithubAdmin" class="py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900" onclick="switchGithubModalTab('admin')">Server App Settings</button>
             </div>
             {% endif %}
 
             <!-- User Connection Tab -->
-            <div id="githubModalUserContent" class="gd-modal-body">
+            <div id="githubModalUserContent" class="p-5 space-y-4">
                 <input type="hidden" id="githubPatInput" value="">
                 
                 {% if has_github_token %}
-                <div class="gd-connected-card">
-                    <div class="gd-connected-icon">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <div class="text-center p-5 bg-emerald-50/60 border border-emerald-200 rounded-xl">
+                    <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2.5">
+                        <i class="mdi mdi-check-circle text-2xl"></i>
                     </div>
-                    <h6 class="gd-connected-title">GitHub Account Connected</h6>
-                    <p class="gd-connected-desc">Your GitHub profile is authorized. You can select your repositories directly and auto-register webhooks.</p>
-                    <div class="gd-btn-group-center">
-                        <button type="button" onclick="closeModal('githubTokenModal')" class="gd-btn gd-btn-outline">Close</button>
-                        <button type="button" onclick="submitTokenForm('delete')" class="gd-btn gd-btn-danger">Disconnect</button>
+                    <h6 class="text-sm font-bold text-slate-900 mb-1">GitHub Account Connected</h6>
+                    <p class="text-xs text-slate-600 mb-4">Your GitHub profile is authorized. You can select your repositories directly and auto-register webhooks.</p>
+                    <div class="flex items-center justify-center gap-2.5">
+                        <button type="button" onclick="closeModal('githubTokenModal')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors">Close</button>
+                        <button type="button" onclick="submitTokenForm('delete')" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-xs font-semibold transition-colors">Disconnect</button>
                     </div>
                 </div>
                 {% else %}
-                <div class="gd-disconnected-card">
-                    <div class="gd-github-hero-icon">
-                        <svg width="36" height="36" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                <div class="text-center p-5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="w-12 h-12 rounded-full bg-slate-900 text-white flex items-center justify-center mx-auto mb-2.5">
+                        <i class="mdi mdi-github text-2xl"></i>
                     </div>
-                    <h6 class="gd-disconnected-title">Connect with GitHub</h6>
-                    <p class="gd-disconnected-desc">Authorize OLSPanel to read repository branches and automate webhooks for instant push deployment.</p>
+                    <h6 class="text-sm font-bold text-slate-900 mb-1">Connect with GitHub</h6>
+                    <p class="text-xs text-slate-600 mb-4">Authorize OLSPanel to read repository branches and automate webhooks for instant push deployment.</p>
                     
                     {% if oauth_configured %}
-                    <div class="gd-btn-group-center">
-                        <a href="{% url 'git_deploy_oauth_redirect' %}" class="gd-btn gd-btn-github">
-                            <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    <div class="flex items-center justify-center gap-2.5">
+                        <a href="{% url 'git_deploy_oauth_redirect' %}" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
+                            <i class="mdi mdi-github text-base"></i>
                             <span>Authorize GitHub Account</span>
                         </a>
-                        <button type="button" onclick="closeModal('githubTokenModal')" class="gd-btn gd-btn-outline">Cancel</button>
+                        <button type="button" onclick="closeModal('githubTokenModal')" class="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors">Cancel</button>
                     </div>
                     {% else %}
-                    <div class="gd-alert gd-alert-warning">
+                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-left text-xs text-amber-800 space-y-1">
                         <strong>⚠️ Integration Pending Server Setup</strong>
-                        <p style="margin-top: 3px;">Server-wide GitHub OAuth has not been configured yet.</p>
+                        <p>Server-wide GitHub OAuth has not been configured yet.</p>
                         {% if is_admin %}
-                        <p style="margin-top: 3px;">Click <strong>Server App Settings</strong> above to create the GitHub App automatically.</p>
+                        <p class="font-medium text-amber-900">Click <strong>Server App Settings</strong> above to create the GitHub App automatically.</p>
                         {% else %}
-                        <p style="margin-top: 3px;">Please ask your system administrator to configure the server-wide GitHub App.</p>
+                        <p>Please ask your system administrator to configure the server-wide GitHub App.</p>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -1457,39 +436,38 @@
 
             <!-- Admin App Settings Tab -->
             {% if is_admin %}
-            <div id="githubModalAdminContent" class="gd-modal-body" style="display: none;">
-                <p class="gd-help-lead">Generate and link a server-wide GitHub App for this OLSPanel instance.</p>
+            <div id="githubModalAdminContent" class="p-5 space-y-4 hidden">
+                <p class="text-xs text-slate-600">Generate and link a server-wide GitHub App for this OLSPanel instance.</p>
 
                 {% if oauth_configured %}
-                <div class="gd-alert gd-alert-success" style="margin-bottom: 14px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        <strong>System GitHub App is configured & active.</strong>
-                    </div>
+                <div class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-2">
+                    <i class="mdi mdi-check-circle text-emerald-600 text-base"></i>
+                    <strong>System GitHub App is configured &amp; active.</strong>
                 </div>
                 
-                <button type="button" onclick="disconnectGithubApp()" class="gd-btn gd-btn-outline-danger" style="width: 100%; justify-content: center; margin-bottom: 14px;">
+                <button type="button" onclick="disconnectGithubApp()" class="w-full px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-xs font-semibold transition-colors">
                     Disconnect GitHub App
                 </button>
 
-                <div class="gd-info-callout">
-                    <h6>💡 How to remove the App on GitHub:</h6>
-                    <a href="{% if github_app_slug %}https://github.com/settings/apps/{{ github_app_slug }}{% else %}https://github.com/settings/apps{% endif %}" target="_blank" class="gd-link-highlight">
-                        Open Developer Settings on GitHub →
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
+                    <h6 class="font-bold text-slate-800 m-0">💡 Manage on GitHub:</h6>
+                    <a href="{% if github_app_slug %}https://github.com/settings/apps/{{ github_app_slug }}{% else %}https://github.com/settings/apps{% endif %}" target="_blank" class="text-brand hover:underline inline-flex items-center gap-1 font-medium">
+                        <span>Open Developer Settings on GitHub</span>
+                        <i class="mdi mdi-open-in-new text-xs"></i>
                     </a>
                 </div>
                 {% else %}
-                <form action="https://github.com/settings/apps/new" method="post" style="margin: 0; width: 100%;">
+                <form action="https://github.com/settings/apps/new" method="post" class="space-y-3">
                     <input type="hidden" name="manifest" id="githubManifestPayload">
-                    <button type="submit" onclick="generateGithubManifest(event, this)" class="gd-btn gd-btn-primary" style="width: 100%; justify-content: center; margin-bottom: 12px;">
-                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    <button type="submit" onclick="generateGithubManifest(event, this)" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
+                        <i class="mdi mdi-github text-base"></i>
                         <span>Setup GitHub App Automatically</span>
                     </button>
                 </form>
 
-                <div class="gd-alert gd-alert-info">
-                    <strong>⚠️ Setup Tip:</strong>
-                    <p style="margin-top: 2px;">When prompted where to install the App, choose <strong>"All repositories"</strong>.</p>
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 space-y-0.5">
+                    <strong>💡 Setup Tip:</strong>
+                    <p>When prompted where to install the App, choose <strong>"All repositories"</strong>.</p>
                 </div>
                 {% endif %}
             </div>
@@ -1498,34 +476,38 @@
         </div>
     </div>
 
-    <!-- MODAL 3: Manual Webhook & SSH Key Info Modal -->
-    <div id="webhookDetailsModal" class="gd-modal-backdrop" onclick="handleBackdropClick(event, 'webhookDetailsModal')">
-        <div class="gd-modal-box" style="max-width: 520px;">
+    <!-- MODAL 4: Manual Webhook & SSH Key Info Modal -->
+    <div id="webhookDetailsModal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4" onclick="handleBackdropClick(event, 'webhookDetailsModal')">
+        <div class="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
             
-            <div class="gd-modal-header">
-                <h5 id="modalWebhookDomainTitle" class="gd-modal-title">Webhook & Deploy Keys</h5>
-                <button onclick="closeModal('webhookDetailsModal')" class="gd-modal-close" aria-label="Close">✕</button>
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h5 id="modalWebhookDomainTitle" class="text-sm font-bold text-slate-900 m-0 flex items-center gap-2">
+                    <i class="mdi mdi-key-variant text-brand text-base"></i> Webhook &amp; Deploy Keys
+                </h5>
+                <button type="button" onclick="closeModal('webhookDetailsModal')" class="text-slate-400 hover:text-slate-700 transition-colors" aria-label="Close">
+                    <i class="mdi mdi-close text-lg"></i>
+                </button>
             </div>
 
-            <div class="gd-modal-body">
+            <div class="p-5 space-y-4">
                 
                 <!-- Webhook URL Field -->
-                <div class="gd-form-group">
-                    <label class="gd-label">Webhook Payload URL</label>
-                    <div class="gd-copy-input-group">
-                        <input type="text" id="modalWebhookUrlInput" readonly class="gd-input gd-code-font">
-                        <button type="button" onclick="copyInputText('modalWebhookUrlInput', this)" class="gd-btn gd-btn-outline gd-btn-compact">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-slate-700">Webhook Payload URL</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="modalWebhookUrlInput" readonly class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono text-slate-800">
+                        <button type="button" onclick="copyInputText('modalWebhookUrlInput', this)" class="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors shrink-0">
                             <span>Copy</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- SSH Public Key Field -->
-                <div class="gd-form-group" id="modalSshKeyContainer">
-                    <label class="gd-label">Deploy SSH Public Key</label>
-                    <div class="gd-copy-input-group">
-                        <textarea id="modalSshKeyInput" readonly class="gd-input gd-code-font" rows="3" style="resize: none;"></textarea>
-                        <button type="button" onclick="copyInputText('modalSshKeyInput', this)" class="gd-btn gd-btn-outline gd-btn-compact" style="align-self: flex-start;">
+                <div class="space-y-1.5" id="modalSshKeyContainer">
+                    <label class="block text-xs font-semibold text-slate-700">Deploy SSH Public Key</label>
+                    <div class="flex items-start gap-2">
+                        <textarea id="modalSshKeyInput" readonly class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono text-slate-800 resize-none h-24"></textarea>
+                        <button type="button" onclick="copyInputText('modalSshKeyInput', this)" class="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors shrink-0">
                             <span>Copy</span>
                         </button>
                     </div>
@@ -1533,33 +515,56 @@
 
             </div>
 
-            <div class="gd-modal-footer">
-                <button type="button" onclick="closeModal('webhookDetailsModal')" class="gd-btn gd-btn-primary">Done</button>
+            <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+                <button type="button" onclick="closeModal('webhookDetailsModal')" class="px-4 py-2 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold transition-colors">Done</button>
             </div>
 
         </div>
     </div>
 
-    <!-- DRAWER: Deployment History & Logs -->
-    <div id="logsDrawerModal" class="gd-drawer-backdrop" onclick="handleDrawerBackdrop(event)">
-        <div class="gd-drawer-panel">
-            
-            <div class="gd-drawer-header">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="gd-terminal-dot"></span>
-                    <h5 class="gd-drawer-title" id="drawerTitleText">Deployment History</h5>
+    <!-- SLIDE-OVER DRAWER: Deployment History & Logs -->
+    <div id="logsDrawerModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300" onclick="handleDrawerBackdrop(event)">
+        <div id="logsDrawerPanel" class="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10 transform translate-x-full transition-transform duration-300 ease-out z-[10000]" onclick="event.stopPropagation()">
+            <div class="w-screen max-w-xl bg-white shadow-2xl flex flex-col h-full border-l border-slate-200">
+                
+                <!-- Drawer Header -->
+                <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0 sticky top-0 z-20 shadow-xs">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-brand animate-pulse shrink-0"></span>
+                        <div>
+                            <h5 class="text-sm font-bold text-slate-900 m-0 leading-tight" id="drawerTitleText">Deployment History &amp; Logs</h5>
+                            <span class="text-[11px] text-slate-400 block mt-0.5">Live execution &amp; commit stream</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeModal('logsDrawerModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-200" title="Close Panel (Esc)">
+                        <i class="mdi mdi-close text-lg leading-none"></i>
+                    </button>
                 </div>
-                <button onclick="closeModal('logsDrawerModal')" class="gd-modal-close" aria-label="Close">✕</button>
-            </div>
 
-            <div id="logsContainer" class="gd-drawer-body">
-                <!-- Dynamically populated logs -->
-            </div>
+                <!-- Drawer Content -->
+                <div id="logsContainer" class="p-5 space-y-3 overflow-y-auto flex-1 bg-slate-50/50">
+                    <!-- Dynamically populated logs -->
+                </div>
 
+            </div>
         </div>
     </div>
 
 </div>
+
+<style>
+#logsDrawerModal, #addConnectionModal, #editConnectionModal, #githubTokenModal, #webhookDetailsModal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 99999 !important;
+}
+#logsDrawerPanel {
+    z-index: 100000 !important;
+}
+</style>
 
 <!-- Page Logic Scripts -->
 <script>
@@ -1582,8 +587,8 @@ function filterConnections() {
 
 // Refresh deployments table without full page reload
 function refreshDeploymentsTable(btn) {
-    const icon = btn ? btn.querySelector('svg') : null;
-    if (icon) icon.classList.add('gd-spin');
+    const icon = document.getElementById('refreshIcon');
+    if (icon) icon.classList.add('animate-spin');
     if (btn) btn.disabled = true;
 
     fetch(window.location.href)
@@ -1610,23 +615,51 @@ function refreshDeploymentsTable(btn) {
         console.error("Failed to refresh table:", err);
     })
     .finally(() => {
-        if (icon) icon.classList.remove('gd-spin');
+        if (icon) icon.classList.remove('animate-spin');
         if (btn) btn.disabled = false;
     });
 }
 
-// Modal handling
+// Modal handling (Append to document.body to break free of header stacking context)
 function openModal(id) {
     const modal = document.getElementById(id);
     if (modal) {
-        modal.style.display = "flex";
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.classList.remove('hidden');
+        if (id === 'logsDrawerModal') {
+            const panel = document.getElementById('logsDrawerPanel');
+            setTimeout(() => {
+                if (panel) {
+                    panel.classList.remove('translate-x-full');
+                    panel.classList.add('translate-x-0');
+                }
+            }, 20);
+        } else {
+            modal.classList.add('flex');
+        }
     }
 }
 
 function closeModal(id) {
     const modal = document.getElementById(id);
-    if (modal) {
-        modal.style.display = "none";
+    if (id === 'logsDrawerModal') {
+        const panel = document.getElementById('logsDrawerPanel');
+        if (panel) {
+            panel.classList.remove('translate-x-0');
+            panel.classList.add('translate-x-full');
+        }
+        setTimeout(() => {
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }, 300);
+    } else {
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
     }
     if (id === 'logsDrawerModal') {
         if (window.logPollingInterval) {
@@ -1654,16 +687,16 @@ function handleDrawerBackdrop(event) {
 
 // Open Webhook & SSH Key Modal
 function openWebhookModal(depId, domain, webhookUrl, sshKey) {
-    document.getElementById('modalWebhookDomainTitle').textContent = `Keys: ${domain}`;
+    document.getElementById('modalWebhookDomainTitle').innerHTML = `<i class="mdi mdi-key-variant text-brand text-base"></i> Keys: ${domain}`;
     document.getElementById('modalWebhookUrlInput').value = webhookUrl;
     
     const keyContainer = document.getElementById('modalSshKeyContainer');
     const keyInput = document.getElementById('modalSshKeyInput');
     if (sshKey && sshKey.trim()) {
-        keyContainer.style.display = 'block';
+        keyContainer.classList.remove('hidden');
         keyInput.value = sshKey;
     } else {
-        keyContainer.style.display = 'none';
+        keyContainer.classList.add('hidden');
         keyInput.value = '';
     }
     
@@ -1677,15 +710,9 @@ function copyInputText(inputId, btn) {
     navigator.clipboard.writeText(input.value);
     
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<span>Copied!</span>';
-    btn.style.background = '#dcfce7';
-    btn.style.color = '#15803d';
-    btn.style.borderColor = '#86efac';
+    btn.innerHTML = '<span class="text-emerald-600 font-bold">Copied!</span>';
     setTimeout(() => {
         btn.innerHTML = originalText;
-        btn.style.background = '';
-        btn.style.color = '';
-        btn.style.borderColor = '';
     }, 1800);
 }
 
@@ -1693,20 +720,15 @@ function copyInputText(inputId, btn) {
 function toggleCustomDropdown() {
     const dropdown = document.getElementById('customSelectDropdown');
     const arrow = document.getElementById('customSelectArrow');
-    const trigger = document.querySelector('.custom-select-trigger');
     
-    if (dropdown.style.display === 'none' || !dropdown.style.display) {
-        dropdown.style.display = 'block';
+    if (dropdown.classList.contains('hidden')) {
+        dropdown.classList.remove('hidden');
         if (arrow) arrow.style.transform = 'rotate(180deg)';
-        trigger.style.borderColor = 'var(--gd-brand)';
-        trigger.style.boxShadow = '0 0 0 2px var(--gd-brand-light)';
         const searchInput = document.getElementById('customSelectSearch');
         if (searchInput) searchInput.focus();
     } else {
-        dropdown.style.display = 'none';
+        dropdown.classList.add('hidden');
         if (arrow) arrow.style.transform = 'none';
-        trigger.style.borderColor = '#d1d5db';
-        trigger.style.boxShadow = 'none';
     }
 }
 
@@ -1716,10 +738,9 @@ function selectCustomOption(val, text, path) {
     
     const label = document.getElementById('customSelectLabel');
     label.textContent = text;
-    label.style.color = 'var(--gd-text-main)';
-    label.style.fontWeight = '600';
+    label.classList.remove('text-slate-500');
+    label.classList.add('text-slate-900', 'font-semibold');
     
-    // Auto-populate deploy path from domain root, allowing user full edit control
     const pathInput = document.getElementById('deployPathInput');
     if (pathInput) {
         pathInput.value = path || '';
@@ -1730,13 +751,9 @@ function selectCustomOption(val, text, path) {
     const options = document.querySelectorAll('.custom-select-option');
     options.forEach(opt => {
         if (opt.getAttribute('data-value') === val) {
-            opt.style.background = 'var(--gd-brand-light)';
-            opt.style.color = 'var(--gd-brand)';
-            opt.style.fontWeight = '600';
+            opt.classList.add('bg-emerald-50', 'text-brand', 'font-semibold');
         } else {
-            opt.style.background = 'transparent';
-            opt.style.color = 'var(--gd-text-body)';
-            opt.style.fontWeight = 'normal';
+            opt.classList.remove('bg-emerald-50', 'text-brand', 'font-semibold');
         }
     });
 }
@@ -1749,7 +766,7 @@ function filterCustomOptions() {
     options.forEach(opt => {
         const text = opt.textContent.toLowerCase();
         if (text.includes(search)) {
-            opt.style.display = 'flex';
+            opt.style.display = 'block';
             found++;
         } else {
             opt.style.display = 'none';
@@ -1758,7 +775,11 @@ function filterCustomOptions() {
     
     const noFound = document.getElementById('noDomainsFound');
     if (noFound) {
-        noFound.style.display = found === 0 ? 'block' : 'none';
+        if (found === 0) {
+            noFound.classList.remove('hidden');
+        } else {
+            noFound.classList.add('hidden');
+        }
     }
 }
 
@@ -1766,16 +787,11 @@ document.addEventListener('click', function(e) {
     const container = document.getElementById('domainSelectContainer');
     const dropdown = document.getElementById('customSelectDropdown');
     const arrow = document.getElementById('customSelectArrow');
-    const trigger = document.querySelector('.custom-select-trigger');
     
     if (container && !container.contains(e.target)) {
-        if (dropdown && dropdown.style.display === 'block') {
-            dropdown.style.display = 'none';
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            dropdown.classList.add('hidden');
             if (arrow) arrow.style.transform = 'none';
-            if (trigger) {
-                trigger.style.borderColor = '#d1d5db';
-                trigger.style.boxShadow = 'none';
-            }
         }
     }
 });
@@ -1784,7 +800,7 @@ document.addEventListener('click', function(e) {
 function showCreateFormError(message) {
     const errorBanner = document.getElementById('createFormError');
     errorBanner.textContent = message;
-    errorBanner.style.display = 'block';
+    errorBanner.classList.remove('hidden');
     errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -1792,7 +808,7 @@ function submitCreateForm(event) {
     event.preventDefault();
     const form = document.getElementById('createDeploymentForm');
     
-    document.getElementById('createFormError').style.display = 'none';
+    document.getElementById('createFormError').classList.add('hidden');
     
     const domainId = document.getElementById('hiddenDomainSelect').value;
     if (!domainId) {
@@ -1809,7 +825,7 @@ function submitCreateForm(event) {
     const repoUrl = document.getElementById('repoUrlInput').value.trim();
     if (!repoUrl) {
         const githubSelect = document.getElementById('githubSelectRepoContainer');
-        if (githubSelect && githubSelect.style.display !== 'none') {
+        if (githubSelect && !githubSelect.classList.contains('hidden')) {
             showCreateFormError("Please select a GitHub repository from the dropdown.");
         } else {
             showCreateFormError("Please enter a target Git repository URL.");
@@ -1826,7 +842,7 @@ function submitCreateForm(event) {
     const submitBtn = document.getElementById('btnConnectRepo');
     const originalContent = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>Connecting...</span>';
+    submitBtn.innerHTML = '<span class="inline-flex items-center gap-1.5"><i class="mdi mdi-loading animate-spin text-sm"></i> Connecting...</span>';
     
     const formData = new FormData(form);
     
@@ -1854,13 +870,12 @@ function submitCreateForm(event) {
 
 // Edit Existing Connection Modal & Form
 function openEditModal(depId, domain, branch, deployPath) {
-    document.getElementById('editModalTitle').textContent = `Edit Connection Settings`;
     const domainLabel = document.getElementById('editModalDomainName');
     if (domainLabel) domainLabel.textContent = domain;
     document.getElementById('editDepId').value = depId;
     document.getElementById('editBranchInput').value = branch || 'main';
     document.getElementById('editDeployPathInput').value = deployPath || '';
-    document.getElementById('editFormError').style.display = 'none';
+    document.getElementById('editFormError').classList.add('hidden');
     openModal('editConnectionModal');
 }
 
@@ -1873,17 +888,17 @@ function submitEditForm(event) {
     const errorBanner = document.getElementById('editFormError');
     const submitBtn = document.getElementById('btnSaveEdit');
 
-    errorBanner.style.display = 'none';
+    errorBanner.classList.add('hidden');
 
     if (!deployPath) {
         errorBanner.textContent = "Deployment directory path cannot be empty.";
-        errorBanner.style.display = 'block';
+        errorBanner.classList.remove('hidden');
         return;
     }
 
     const originalContent = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>Saving...</span>';
+    submitBtn.innerHTML = '<span class="inline-flex items-center gap-1.5"><i class="mdi mdi-loading animate-spin text-sm"></i> Saving...</span>';
 
     const formData = new FormData(form);
 
@@ -1898,14 +913,14 @@ function submitEditForm(event) {
             refreshDeploymentsTable();
         } else {
             errorBanner.textContent = data.message;
-            errorBanner.style.display = 'block';
+            errorBanner.classList.remove('hidden');
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalContent;
         }
     })
     .catch(err => {
         errorBanner.textContent = "Server error saving changes. Please try again.";
-        errorBanner.style.display = 'block';
+        errorBanner.classList.remove('hidden');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalContent;
     });
@@ -1915,13 +930,13 @@ function submitEditForm(event) {
 function triggerManualDeploy(depId, button) {
     const originalHtml = button.innerHTML;
     button.disabled = true;
-    button.innerHTML = "<span>Dispatching...</span>";
+    button.innerHTML = '<i class="mdi mdi-loading animate-spin text-xs"></i> <span>Deploying...</span>';
 
     fetch(`/module/git_deploy/deploy/${depId}/`)
     .then(res => res.json())
     .then(data => {
         if(data.status === "success") {
-            button.innerHTML = "<span>Triggered!</span>";
+            button.innerHTML = '<i class="mdi mdi-check text-xs"></i> <span>Triggered!</span>';
             setTimeout(() => {
                 button.disabled = false;
                 button.innerHTML = originalHtml;
@@ -1962,13 +977,13 @@ function confirmDelete(depId) {
 }
 
 // Status Helpers
-function getStatusDotHtml(status) {
+function getStatusBadgeHtml(status) {
     if (status === 'success') {
-        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);"></span>';
+        return '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Success</span>';
     } else if (status === 'failed') {
-        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);"></span>';
+        return '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Failed</span>';
     } else {
-        return '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #f59e0b; animation: gdPulse 1.5s infinite;"></span>';
+        return '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Running</span>';
     }
 }
 
@@ -1981,42 +996,38 @@ function createLogAccordionElement(log) {
     } catch(e) {}
 
     const logItem = document.createElement('div');
-    logItem.className = 'log-accordion';
+    logItem.className = 'bg-white border border-slate-200 rounded-lg overflow-hidden shadow-2xs';
     logItem.id = `logRun_${log.id}`;
     
     const commitMsg = log.commit_message && log.commit_message.trim() ? log.commit_message : 'Manual Deployment';
     const commitAuthor = log.commit_author || 'admin';
     const hashStr = log.commit_hash ? log.commit_hash.substring(0, 7) : 'manual';
-    const statusColor = log.status === 'success' ? '#10b981' : (log.status === 'failed' ? '#ef4444' : '#f59e0b');
     const logOutput = log.log_output && log.log_output.trim() ? log.log_output : 'No output recorded for this run.';
 
     logItem.innerHTML = `
-        <div class="log-header" onclick="toggleLogBody(this)">
-            <div class="log-header-main">
-                <div class="log-status-dot-wrap">
-                    ${getStatusDotHtml(log.status)}
+        <div class="px-4 py-3 bg-white hover:bg-slate-50 cursor-pointer flex items-center justify-between gap-3 select-none transition-colors" onclick="toggleLogBody(this)">
+            <div class="flex items-center gap-3 overflow-hidden">
+                <div>
+                    ${getStatusBadgeHtml(log.status)}
                 </div>
-                <div class="log-header-text">
-                    <div class="log-commit-title">
+                <div class="truncate">
+                    <div class="text-xs font-bold text-slate-900 truncate">
                         ${escapeHtml(commitMsg)}
                     </div>
-                    <div class="log-meta-line">
+                    <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
                         <span>${dateStr}</span>
                         <span>•</span>
-                        <code class="log-hash-badge">${hashStr}</code>
+                        <code class="px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded font-mono text-[10px]">${hashStr}</code>
                         <span>•</span>
                         <span>${escapeHtml(commitAuthor)}</span>
                     </div>
                 </div>
             </div>
-            <div class="log-header-right">
-                <span class="log-status-text" style="color: ${statusColor};">
-                    ${log.status || 'unknown'}
-                </span>
-                <span class="log-arrow">▼</span>
+            <div class="flex items-center gap-2 shrink-0">
+                <i class="mdi mdi-chevron-down text-slate-400 log-arrow transition-transform text-lg"></i>
             </div>
         </div>
-        <div class="log-body">${escapeHtml(logOutput)}</div>
+        <div class="log-body hidden p-4 bg-slate-950 text-slate-200 font-mono text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed border-t border-slate-900 max-h-96">${escapeHtml(logOutput)}</div>
     `;
     return logItem;
 }
@@ -2062,7 +1073,7 @@ function streamLogOutput(logId, logBodyElement, depId, deployBtn) {
             window.activeLogStreamReader = null;
             if (deployBtn) {
                 deployBtn.disabled = false;
-                deployBtn.innerHTML = "<span>Deploy</span>";
+                deployBtn.innerHTML = '<i class="mdi mdi-play text-xs"></i> <span>Deploy</span>';
             }
             refreshLogsList(depId);
         }
@@ -2071,7 +1082,7 @@ function streamLogOutput(logId, logBodyElement, depId, deployBtn) {
         logBodyElement.textContent += "\nConnection error: " + err;
         if (deployBtn) {
             deployBtn.disabled = false;
-            deployBtn.innerHTML = "<span>Deploy</span>";
+            deployBtn.innerHTML = '<i class="mdi mdi-play text-xs"></i> <span>Deploy</span>';
         }
     });
 }
@@ -2090,10 +1101,8 @@ function refreshLogsList(depId) {
                 if (index === 0) {
                     const body = logItem.querySelector('.log-body');
                     const arrow = logItem.querySelector('.log-arrow');
-                    if (body) body.style.display = "block";
-                    const header = logItem.querySelector('.log-header');
-                    if (header) header.style.borderBottomColor = "#1e293b";
-                    if (arrow) arrow.textContent = "▲";
+                    if (body) body.classList.remove('hidden');
+                    if (arrow) arrow.style.transform = 'rotate(180deg)';
                 }
             });
         }
@@ -2107,7 +1116,7 @@ function openLogsModal(depId, activeLogId = null) {
     }
 
     const container = document.getElementById('logsContainer');
-    container.innerHTML = "<div style='color:#64748b; text-align:center; padding: 24px; font-size: 0.85rem;'>Loading deployment history...</div>";
+    container.innerHTML = "<div class='text-slate-400 text-center py-6 text-xs'>Loading deployment history...</div>";
     openModal('logsDrawerModal');
     
     const deployBtn = document.querySelector(`button[onclick*="triggerManualDeploy(${depId},"]`);
@@ -2121,44 +1130,39 @@ function openLogsModal(depId, activeLogId = null) {
                 const logItem = createLogAccordionElement(log);
                 container.appendChild(logItem);
                 
-                // Open the newest log by default or the triggered log
                 if (index === 0 || (activeLogId && log.id === activeLogId)) {
                     const body = logItem.querySelector('.log-body');
                     const arrow = logItem.querySelector('.log-arrow');
-                    const header = logItem.querySelector('.log-header');
-                    if (body) body.style.display = "block";
-                    if (header) header.style.borderBottomColor = "#1e293b";
-                    if (arrow) arrow.textContent = "▲";
+                    if (body) body.classList.remove('hidden');
+                    if (arrow) arrow.style.transform = 'rotate(180deg)';
                     
                     if (log.status === 'pending') {
                         if (deployBtn) {
                             deployBtn.disabled = true;
-                            deployBtn.innerHTML = "<span>Deploying...</span>";
+                            deployBtn.innerHTML = '<i class="mdi mdi-loading animate-spin text-xs"></i> <span>Deploying...</span>';
                         }
                         streamLogOutput(log.id, body, depId, deployBtn);
                     }
                 }
             });
         } else {
-            container.innerHTML = "<div style='color:#64748b; text-align:center; padding: 30px; font-size: 0.85rem;'>No deployment logs recorded for this domain yet.</div>";
+            container.innerHTML = "<div class='text-slate-400 text-center py-8 text-xs'>No deployment logs recorded for this domain yet.</div>";
         }
     })
     .catch(err => {
-        container.innerHTML = "<div style='color:#ef4444; text-align:center; padding: 30px; font-size: 0.85rem;'>Failed to load deployment history.</div>";
+        container.innerHTML = "<div class='text-red-500 text-center py-8 text-xs'>Failed to load deployment history.</div>";
     });
 }
 
 function toggleLogBody(headerElement) {
     const body = headerElement.nextElementSibling;
     const arrow = headerElement.querySelector('.log-arrow');
-    if (body.style.display === "block") {
-        body.style.display = "none";
-        headerElement.style.borderBottomColor = "transparent";
-        if (arrow) arrow.textContent = "▼";
+    if (body.classList.contains('hidden')) {
+        body.classList.remove('hidden');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
     } else {
-        body.style.display = "block";
-        headerElement.style.borderBottomColor = "#1e293b";
-        if (arrow) arrow.textContent = "▲";
+        body.classList.add('hidden');
+        if (arrow) arrow.style.transform = 'none';
     }
 }
 
@@ -2240,19 +1244,31 @@ function switchRepoTab(tab) {
     const autoConfigure = document.getElementById('autoConfigureContainer');
     
     if (tab === 'select') {
-        if (tabSelect) tabSelect.classList.add('active');
-        if (tabManual) tabManual.classList.remove('active');
-        if (selectContainer) selectContainer.style.display = "block";
-        if (manualContainer) manualContainer.style.display = "none";
+        if (tabSelect) {
+            tabSelect.classList.add('bg-white', 'text-brand', 'shadow-xs');
+            tabSelect.classList.remove('text-slate-600');
+        }
+        if (tabManual) {
+            tabManual.classList.remove('bg-white', 'text-brand', 'shadow-xs');
+            tabManual.classList.add('text-slate-600');
+        }
+        if (selectContainer) selectContainer.classList.remove('hidden');
+        if (manualContainer) manualContainer.classList.add('hidden');
         if (repoInput) repoInput.required = false;
-        if (autoConfigure) autoConfigure.style.display = "block";
+        if (autoConfigure) autoConfigure.classList.remove('hidden');
     } else {
-        if (tabManual) tabManual.classList.add('active');
-        if (tabSelect) tabSelect.classList.remove('active');
-        if (selectContainer) selectContainer.style.display = "none";
-        if (manualContainer) manualContainer.style.display = "block";
+        if (tabManual) {
+            tabManual.classList.add('bg-white', 'text-brand', 'shadow-xs');
+            tabManual.classList.remove('text-slate-600');
+        }
+        if (tabSelect) {
+            tabSelect.classList.remove('bg-white', 'text-brand', 'shadow-xs');
+            tabSelect.classList.add('text-slate-600');
+        }
+        if (selectContainer) selectContainer.classList.add('hidden');
+        if (manualContainer) manualContainer.classList.remove('hidden');
         if (repoInput) repoInput.required = true;
-        if (autoConfigure) autoConfigure.style.display = "none";
+        if (autoConfigure) autoConfigure.classList.add('hidden');
     }
 }
 
@@ -2260,9 +1276,9 @@ function toggleGithubDropdown() {
     const dropdown = document.getElementById('githubSelectDropdown');
     const arrow = document.getElementById('githubSelectArrow');
     
-    if (dropdown.style.display === "none" || !dropdown.style.display) {
-        dropdown.style.display = "block";
-        if (arrow) arrow.style.transform = "rotate(180deg)";
+    if (dropdown.classList.contains('hidden')) {
+        dropdown.classList.remove('hidden');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
         const search = document.getElementById('githubSelectSearch');
         if (search) search.focus();
         
@@ -2270,14 +1286,14 @@ function toggleGithubDropdown() {
             loadGithubRepos();
         }
     } else {
-        dropdown.style.display = "none";
-        if (arrow) arrow.style.transform = "none";
+        dropdown.classList.add('hidden');
+        if (arrow) arrow.style.transform = 'none';
     }
 }
 
 function loadGithubRepos() {
     const list = document.getElementById('githubSelectOptionsList');
-    list.innerHTML = `<div class="gd-loading-box">Loading repositories...</div>`;
+    list.innerHTML = `<div class="p-4 text-center text-slate-400 text-xs">Loading repositories...</div>`;
     
     fetch("{% url 'git_deploy_repos' %}")
     .then(res => res.json())
@@ -2287,11 +1303,11 @@ function loadGithubRepos() {
             githubReposLoaded = true;
             renderGithubOptions(githubRepos);
         } else {
-            list.innerHTML = `<div class="gd-loading-box" style="color: #ef4444;">Error: ${data.message}</div>`;
+            list.innerHTML = `<div class="p-4 text-center text-red-500 text-xs">Error: ${data.message}</div>`;
         }
     })
     .catch(err => {
-        list.innerHTML = `<div class="gd-loading-box" style="color: #ef4444;">Server connection failed.</div>`;
+        list.innerHTML = `<div class="p-4 text-center text-red-500 text-xs">Server connection failed.</div>`;
     });
 }
 
@@ -2300,20 +1316,20 @@ function renderGithubOptions(reposList) {
     list.innerHTML = "";
     
     if (!reposList || reposList.length === 0) {
-        list.innerHTML = `<div class="gd-loading-box">No repositories found</div>`;
+        list.innerHTML = `<div class="p-4 text-center text-slate-400 text-xs">No repositories found</div>`;
         return;
     }
     
     reposList.forEach(repo => {
         const option = document.createElement('div');
-        option.className = 'custom-select-option';
+        option.className = 'px-3 py-2 cursor-pointer hover:bg-slate-50 flex items-center justify-between transition-colors';
         
         const badge = repo.private ? 
-            `<span style="background: #fef2f2; color: #dc2626; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; font-weight:700;">Private</span>` : 
-            `<span style="background: #f0fdf4; color: #16a34a; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; font-weight:700;">Public</span>`;
+            `<span class="px-1.5 py-0.5 bg-red-50 text-red-700 border border-red-200 text-[10px] rounded font-bold">Private</span>` : 
+            `<span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] rounded font-bold">Public</span>`;
             
         option.innerHTML = `
-            <span style="font-weight: 500;">${repo.full_name}</span>
+            <span class="font-medium text-slate-800 truncate">${repo.full_name}</span>
             ${badge}
         `;
         
@@ -2335,8 +1351,8 @@ function selectGithubRepo(repo) {
     const label = document.getElementById('githubSelectLabel');
     if (label) {
         label.textContent = repo.full_name;
-        label.style.color = "var(--gd-text-main)";
-        label.style.fontWeight = "600";
+        label.classList.remove('text-slate-500');
+        label.classList.add('text-slate-900', 'font-semibold');
     }
     
     const repoUrl = repo.private ? repo.ssh_url : repo.clone_url;
@@ -2354,10 +1370,10 @@ document.addEventListener('click', function(event) {
     const container = document.getElementById('githubSelectContainer');
     if (container && !container.contains(event.target)) {
         const dropdown = document.getElementById('githubSelectDropdown');
-        if (dropdown && dropdown.style.display === "block") {
-            dropdown.style.display = "none";
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            dropdown.classList.add('hidden');
             const arrow = document.getElementById('githubSelectArrow');
-            if (arrow) arrow.style.transform = "none";
+            if (arrow) arrow.style.transform = 'none';
         }
     }
 });
@@ -2369,15 +1385,27 @@ function switchGithubModalTab(tab) {
     const adminContent = document.getElementById('githubModalAdminContent');
     
     if (tab === 'user') {
-        if (userTab) userTab.classList.add('active');
-        if (adminTab) adminTab.classList.remove('active');
-        if (userContent) userContent.style.display = "flex";
-        if (adminContent) adminContent.style.display = "none";
+        if (userTab) {
+            userTab.classList.add('bg-white', 'text-brand', 'shadow-xs');
+            userTab.classList.remove('text-slate-600');
+        }
+        if (adminTab) {
+            adminTab.classList.remove('bg-white', 'text-brand', 'shadow-xs');
+            adminTab.classList.add('text-slate-600');
+        }
+        if (userContent) userContent.classList.remove('hidden');
+        if (adminContent) adminContent.classList.add('hidden');
     } else {
-        if (adminTab) adminTab.classList.add('active');
-        if (userTab) userTab.classList.remove('active');
-        if (userContent) userContent.style.display = "none";
-        if (adminContent) adminContent.style.display = "flex";
+        if (adminTab) {
+            adminTab.classList.add('bg-white', 'text-brand', 'shadow-xs');
+            adminTab.classList.remove('text-slate-600');
+        }
+        if (userTab) {
+            userTab.classList.remove('bg-white', 'text-brand', 'shadow-xs');
+            userTab.classList.add('text-slate-600');
+        }
+        if (userContent) userContent.classList.add('hidden');
+        if (adminContent) adminContent.classList.remove('hidden');
     }
 }
 
