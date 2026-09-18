@@ -29,6 +29,33 @@ def get_authenticated_user(request):
         return request.admin_user
     return request.user if request.user.is_authenticated else None
 
+def get_request_protocol(request):
+    """
+    Reliably detects https vs http for OLSPanel.
+    In OLSPanel, port 2087 is HTTPS. Reverse proxies, Cloudflare, or local olspanelcp proxy
+    may forward requests internally over HTTP to 127.0.0.1:8001.
+    """
+    if request.is_secure():
+        return 'https'
+    if request.META.get('HTTP_X_FORWARDED_PROTO', '').lower() == 'https':
+        return 'https'
+    if request.META.get('HTTP_X_FORWARDED_SSL', '').lower() == 'on':
+        return 'https'
+    if request.META.get('HTTP_X_FORWARDED_SCHEME', '').lower() == 'https':
+        return 'https'
+    # Check if host or server port is 2087 (OLSPanel default SSL port)
+    host = request.get_host()
+    if ':2087' in host or request.META.get('SERVER_PORT') == '2087':
+        return 'https'
+    # Check if request referer or origin was https
+    origin = request.META.get('HTTP_ORIGIN', '') or request.META.get('HTTP_REFERER', '')
+    if origin.startswith('https://'):
+        return 'https'
+    if request.scheme == 'https':
+        return 'https'
+    return 'http'
+
+
 def normalize_git_url(url):
     """Normalizes various git URL formats (HTTPS, SSH, etc.) to organization/repo style"""
     url = url.strip().lower()
@@ -289,7 +316,7 @@ def gui_view(request):
 
     # Calculate webhook base URL
     host = request.get_host()
-    protocol = 'https' if request.is_secure() else 'http'
+    protocol = get_request_protocol(request)
     webhook_url = f"{protocol}://{host}/module/git_deploy/webhook/"
 
     # Determine base template (respect impersonation)
@@ -415,7 +442,7 @@ def create_deployment_view(request):
         # 2. Add Push Webhook
         if not github_error:
             host = request.get_host()
-            protocol = 'https' if request.is_secure() else 'http'
+            protocol = get_request_protocol(request)
             webhook_url = f"{protocol}://{host}/module/git_deploy/webhook/?secret={webhook_secret}"
             
             hook_payload = {
@@ -921,7 +948,7 @@ def oauth_redirect_view(request):
     
     # Construct redirect URI
     host = request.get_host()
-    protocol = 'https' if request.is_secure() else 'http'
+    protocol = get_request_protocol(request)
     redirect_uri = f"{protocol}://{host}/module/git_deploy/oauth/callback/"
     
     # Request repo and admin:repo_hook permissions
@@ -963,7 +990,7 @@ def oauth_callback_view(request):
         
     # Construct redirect URI
     host = request.get_host()
-    protocol = 'https' if request.is_secure() else 'http'
+    protocol = get_request_protocol(request)
     redirect_uri = f"{protocol}://{host}/module/git_deploy/oauth/callback/"
     
     # Exchange code for access token

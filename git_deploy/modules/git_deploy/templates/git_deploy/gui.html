@@ -177,7 +177,7 @@
                     <div class="space-y-1.5">
                         <label class="block text-xs font-semibold text-slate-700">Target Domain / Subdomain</label>
                         <div class="relative" id="domainSelectContainer">
-                            <select name="domain_id" id="hiddenDomainSelect" required class="hidden">
+                            <select name="domain_id" id="hiddenDomainSelect" required style="display: none !important;">
                                 <option value="" disabled selected>-- Choose a domain --</option>
                                 {% for dom in domains %}
                                     <option value="{{ dom.id }}" data-path="{{ dom.path }}">{{ dom.domain }}</option>
@@ -561,6 +561,10 @@
     bottom: 0 !important;
     z-index: 99999 !important;
 }
+#logsDrawerModal.hidden, #addConnectionModal.hidden, #editConnectionModal.hidden, #githubTokenModal.hidden, #webhookDetailsModal.hidden,
+.hidden {
+    display: none !important;
+}
 #logsDrawerPanel {
     z-index: 100000 !important;
 }
@@ -591,7 +595,11 @@ function refreshDeploymentsTable(btn) {
     if (icon) icon.classList.add('animate-spin');
     if (btn) btn.disabled = true;
 
-    fetch(window.location.href)
+    fetch(window.location.href, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
     .then(res => res.text())
     .then(html => {
         const parser = new DOMParser();
@@ -620,16 +628,24 @@ function refreshDeploymentsTable(btn) {
     });
 }
 
-// Modal handling (Append to document.body to break free of header stacking context)
+// Modal handling
 function openModal(id) {
+    // Clean up any duplicate modals from prior SPA page loads
+    const allModals = Array.from(document.querySelectorAll('#' + id));
+    if (allModals.length > 1) {
+        const keepModal = allModals[allModals.length - 1];
+        allModals.forEach(m => {
+            if (m !== keepModal) m.remove();
+        });
+    }
+
     const modal = document.getElementById(id);
     if (modal) {
-        if (modal.parentElement !== document.body) {
-            document.body.appendChild(modal);
-        }
         modal.classList.remove('hidden');
         if (id === 'logsDrawerModal') {
-            const panel = document.getElementById('logsDrawerPanel');
+            modal.style.display = 'flex';
+            modal.classList.add('flex');
+            const panel = modal.querySelector('#logsDrawerPanel') || document.getElementById('logsDrawerPanel');
             setTimeout(() => {
                 if (panel) {
                     panel.classList.remove('translate-x-full');
@@ -638,29 +654,32 @@ function openModal(id) {
             }, 20);
         } else {
             modal.classList.add('flex');
+            modal.style.display = 'flex';
         }
     }
 }
 
 function closeModal(id) {
-    const modal = document.getElementById(id);
-    if (id === 'logsDrawerModal') {
-        const panel = document.getElementById('logsDrawerPanel');
-        if (panel) {
-            panel.classList.remove('translate-x-0');
-            panel.classList.add('translate-x-full');
-        }
-        setTimeout(() => {
-            if (modal) {
-                modal.classList.add('hidden');
+    const modals = document.querySelectorAll('#' + id);
+    modals.forEach(modal => {
+        if (id === 'logsDrawerModal') {
+            const panel = modal.querySelector('#logsDrawerPanel') || document.getElementById('logsDrawerPanel');
+            if (panel) {
+                panel.classList.remove('translate-x-0');
+                panel.classList.add('translate-x-full');
             }
-        }, 300);
-    } else {
-        if (modal) {
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.style.display = 'none';
+            }, 300);
+        } else {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            modal.style.display = 'none';
         }
-    }
+    });
+
     if (id === 'logsDrawerModal') {
         if (window.logPollingInterval) {
             clearInterval(window.logPollingInterval);
@@ -797,52 +816,68 @@ document.addEventListener('click', function(e) {
 });
 
 // Form submission for creating new deployment link
-function showCreateFormError(message) {
-    const errorBanner = document.getElementById('createFormError');
-    errorBanner.textContent = message;
-    errorBanner.classList.remove('hidden');
-    errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+function showCreateFormError(message, bannerEl = null) {
+    const errorBanner = bannerEl || document.getElementById('createFormError');
+    if (errorBanner) {
+        errorBanner.textContent = message;
+        errorBanner.classList.remove('hidden');
+        errorBanner.style.display = 'block';
+        errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+        alert(message);
+    }
 }
 
 function submitCreateForm(event) {
     event.preventDefault();
-    const form = document.getElementById('createDeploymentForm');
+    const form = event.target || document.getElementById('createDeploymentForm');
+    const modal = form.closest('#addConnectionModal') || document.getElementById('addConnectionModal');
+    const errorBanner = form.querySelector('#createFormError') || document.getElementById('createFormError');
+    const submitBtn = form.querySelector('button[type="submit"]') || document.getElementById('btnConnectRepo');
     
-    document.getElementById('createFormError').classList.add('hidden');
+    if (errorBanner) {
+        errorBanner.classList.add('hidden');
+        errorBanner.style.display = 'none';
+    }
     
-    const domainId = document.getElementById('hiddenDomainSelect').value;
+    const domainSelect = form.querySelector('#hiddenDomainSelect') || document.getElementById('hiddenDomainSelect');
+    const domainId = domainSelect ? domainSelect.value : '';
     if (!domainId) {
-        showCreateFormError("Please select a target domain or subdomain.");
+        showCreateFormError("Please select a target domain or subdomain.", errorBanner);
         return;
     }
 
-    const deployPath = document.getElementById('deployPathInput').value.trim();
+    const deployPathInput = form.querySelector('#deployPathInput') || document.getElementById('deployPathInput');
+    const deployPath = deployPathInput ? deployPathInput.value.trim() : '';
     if (!deployPath) {
-        showCreateFormError("Please specify a deployment directory path.");
+        showCreateFormError("Please specify a deployment directory path.", errorBanner);
         return;
     }
     
-    const repoUrl = document.getElementById('repoUrlInput').value.trim();
+    const repoUrlInput = form.querySelector('#repoUrlInput') || document.getElementById('repoUrlInput');
+    const repoUrl = repoUrlInput ? repoUrlInput.value.trim() : '';
     if (!repoUrl) {
-        const githubSelect = document.getElementById('githubSelectRepoContainer');
-        if (githubSelect && !githubSelect.classList.contains('hidden')) {
-            showCreateFormError("Please select a GitHub repository from the dropdown.");
+        const githubSelect = form.querySelector('#githubSelectRepoContainer') || document.getElementById('githubSelectRepoContainer');
+        if (githubSelect && !githubSelect.classList.contains('hidden') && githubSelect.style.display !== 'none') {
+            showCreateFormError("Please select a GitHub repository from the dropdown.", errorBanner);
         } else {
-            showCreateFormError("Please enter a target Git repository URL.");
+            showCreateFormError("Please enter a target Git repository URL.", errorBanner);
         }
         return;
     }
     
-    const branch = form.querySelector('input[name="branch"]').value.trim();
+    const branchInput = form.querySelector('input[name="branch"]');
+    const branch = branchInput ? branchInput.value.trim() : '';
     if (!branch) {
-        showCreateFormError("Please enter a target deploy branch (e.g. main).");
+        showCreateFormError("Please enter a target deploy branch (e.g. main).", errorBanner);
         return;
     }
     
-    const submitBtn = document.getElementById('btnConnectRepo');
-    const originalContent = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="inline-flex items-center gap-1.5"><i class="mdi mdi-loading animate-spin text-sm"></i> Connecting...</span>';
+    const originalContent = '<i class="mdi mdi-plus text-base leading-none"></i><span>Connect Repository</span>';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="inline-flex items-center gap-1.5"><i class="mdi mdi-loading animate-spin text-sm"></i> Connecting...</span>';
+    }
     
     const formData = new FormData(form);
     
@@ -852,19 +887,41 @@ function submitCreateForm(event) {
     })
     .then(res => res.json())
     .then(data => {
-        if(data.status === "success") {
+        if (data.status === "success") {
             closeModal('addConnectionModal');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalContent;
+            }
+            form.reset();
+            if (domainSelect) domainSelect.value = '';
+            const domainLabel = form.querySelector('#customSelectLabel') || document.getElementById('customSelectLabel');
+            if (domainLabel) {
+                domainLabel.textContent = '-- Choose a domain --';
+                domainLabel.className = 'text-slate-500';
+            }
+            const githubLabel = form.querySelector('#githubSelectLabel') || document.getElementById('githubSelectLabel');
+            if (githubLabel) {
+                githubLabel.textContent = 'Click to select repository...';
+                githubLabel.className = 'text-slate-500';
+            }
+            if (repoUrlInput) repoUrlInput.value = '';
             refreshDeploymentsTable();
         } else {
-            showCreateFormError(data.message);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalContent;
+            showCreateFormError(data.message || "Failed to connect repository", errorBanner);
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalContent;
+            }
         }
     })
     .catch(err => {
-        showCreateFormError("Server error connecting repository. Please try again.");
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalContent;
+        console.error("Create deployment error:", err);
+        showCreateFormError("Server error connecting repository. Please try again.", errorBanner);
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalContent;
+        }
     });
 }
 
@@ -875,30 +932,45 @@ function openEditModal(depId, domain, branch, deployPath) {
     document.getElementById('editDepId').value = depId;
     document.getElementById('editBranchInput').value = branch || 'main';
     document.getElementById('editDeployPathInput').value = deployPath || '';
-    document.getElementById('editFormError').classList.add('hidden');
+    const errorBanner = document.getElementById('editFormError');
+    if (errorBanner) {
+        errorBanner.classList.add('hidden');
+        errorBanner.style.display = 'none';
+    }
     openModal('editConnectionModal');
 }
 
 function submitEditForm(event) {
     event.preventDefault();
-    const form = document.getElementById('editDeploymentForm');
-    const depId = document.getElementById('editDepId').value;
-    const branch = document.getElementById('editBranchInput').value.trim();
-    const deployPath = document.getElementById('editDeployPathInput').value.trim();
-    const errorBanner = document.getElementById('editFormError');
-    const submitBtn = document.getElementById('btnSaveEdit');
+    const form = event.target || document.getElementById('editDeploymentForm');
+    const depIdInput = form.querySelector('#editDepId') || document.getElementById('editDepId');
+    const depId = depIdInput ? depIdInput.value : '';
+    const branchInput = form.querySelector('#editBranchInput') || document.getElementById('editBranchInput');
+    const branch = branchInput ? branchInput.value.trim() : 'main';
+    const deployPathInput = form.querySelector('#editDeployPathInput') || document.getElementById('editDeployPathInput');
+    const deployPath = deployPathInput ? deployPathInput.value.trim() : '';
+    const errorBanner = form.querySelector('#editFormError') || document.getElementById('editFormError');
+    const submitBtn = form.querySelector('button[type="submit"]') || document.getElementById('btnSaveEdit');
 
-    errorBanner.classList.add('hidden');
+    if (errorBanner) {
+        errorBanner.classList.add('hidden');
+        errorBanner.style.display = 'none';
+    }
 
     if (!deployPath) {
-        errorBanner.textContent = "Deployment directory path cannot be empty.";
-        errorBanner.classList.remove('hidden');
+        if (errorBanner) {
+            errorBanner.textContent = "Deployment directory path cannot be empty.";
+            errorBanner.classList.remove('hidden');
+            errorBanner.style.display = 'block';
+        }
         return;
     }
 
-    const originalContent = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="inline-flex items-center gap-1.5"><i class="mdi mdi-loading animate-spin text-sm"></i> Saving...</span>';
+    const originalContent = '<span>Save Changes</span>';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="inline-flex items-center gap-1.5"><i class="mdi mdi-loading animate-spin text-sm"></i> Saving...</span>';
+    }
 
     const formData = new FormData(form);
 
@@ -910,19 +982,33 @@ function submitEditForm(event) {
     .then(data => {
         if (data.status === "success") {
             closeModal('editConnectionModal');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalContent;
+            }
             refreshDeploymentsTable();
         } else {
-            errorBanner.textContent = data.message;
-            errorBanner.classList.remove('hidden');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalContent;
+            if (errorBanner) {
+                errorBanner.textContent = data.message;
+                errorBanner.classList.remove('hidden');
+                errorBanner.style.display = 'block';
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalContent;
+            }
         }
     })
     .catch(err => {
-        errorBanner.textContent = "Server error saving changes. Please try again.";
-        errorBanner.classList.remove('hidden');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalContent;
+        if (errorBanner) {
+            errorBanner.textContent = "Server error saving changes. Please try again.";
+            errorBanner.classList.remove('hidden');
+            errorBanner.style.display = 'block';
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalContent;
+        }
     });
 }
 
