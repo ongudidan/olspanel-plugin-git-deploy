@@ -16,17 +16,27 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
 from django.db import connection
 from users.models import Domain
-from django.contrib.auth import get_user_model
+from users.database import get_user_data_by_id
 from users.decorators import loginadminoruser
 
 User = get_user_model()
 
 def get_authenticated_user(request):
     """Retrieves authenticated admin or standard user, respecting admin impersonation"""
-    if hasattr(request, 'admin_user') and request.admin_user:
-        if request.user and request.user.is_authenticated and request.user != request.admin_user:
+    admin_user = getattr(request, 'admin_user', None)
+    if not admin_user and hasattr(request, 'user') and request.user.is_authenticated:
+        if getattr(request.user, 'is_superuser', False) or getattr(request.user, 'is_staff', False):
+            admin_user = request.user
+        else:
+            u_data = get_user_data_by_id(request.user.id)
+            if u_data and u_data.get('whm') == 1:
+                admin_user = request.user
+        request.admin_user = admin_user
+
+    if admin_user:
+        if request.user and request.user.is_authenticated and request.user != admin_user:
             return request.user
-        return request.admin_user
+        return admin_user
     return request.user if request.user.is_authenticated else None
 
 def get_request_protocol(request):
@@ -244,13 +254,13 @@ def deploy_worker(deployment_id, log_id, commit_info=None):
 def gui_view(request):
     """Main dashboard interface"""
     user = get_authenticated_user(request)
-    # Determine if admin is impersonating a user (request.user != request.admin_user)
     is_impersonating = False
-    if hasattr(request, 'admin_user') and request.admin_user:
-        if request.user and request.user.is_authenticated and request.user != request.admin_user:
+    admin_user = getattr(request, 'admin_user', None)
+    if admin_user and hasattr(request, 'user') and request.user.is_authenticated:
+        if request.user.id != admin_user.id:
             is_impersonating = True
             
-    is_admin = hasattr(request, 'admin_user') and request.admin_user and not is_impersonating
+    is_admin = bool(admin_user and not is_impersonating)
     
     # Get standard domains for this user
     if user.is_superuser or is_admin:
@@ -320,7 +330,7 @@ def gui_view(request):
     webhook_url = f"{protocol}://{host}/module/git_deploy/webhook/"
 
     # Determine base template (respect impersonation)
-    if hasattr(request, 'admin_user') and request.admin_user and not is_impersonating:
+    if is_admin:
         base_template = 'whm/base.html'
     else:
         base_template = 'users/base.html'
