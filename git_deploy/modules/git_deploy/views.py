@@ -18,6 +18,7 @@ from django.db import connection
 from users.models import Domain
 from users.database import get_user_data_by_id
 from users.decorators import loginadminoruser
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
