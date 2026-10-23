@@ -95,6 +95,7 @@ def get_git_deploy_context(request):
         effective_user = admin_user
         is_admin_mode = True
         base_template = 'whm/base.html'
+        is_impersonating = False
     else:
         effective_user = regular_user or admin_user
         is_admin_mode = False
