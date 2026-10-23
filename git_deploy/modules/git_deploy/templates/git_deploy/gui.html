@@ -4,7 +4,38 @@
 
 {% block content %}
 
-<div class="space-y-5">
+    {% if is_impersonating %}
+    <!-- Impersonation Notice & Context Switcher Bar -->
+    <div class="rounded-lg p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs border {% if is_admin %}bg-amber-50 border-amber-200 text-amber-900{% else %}bg-indigo-50 border-indigo-200 text-indigo-900{% endif %}">
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 {% if is_admin %}bg-amber-100 text-amber-700{% else %}bg-indigo-100 text-indigo-700{% endif %}">
+                <i class="mdi {% if is_admin %}mdi-shield-crown{% else %}mdi-account-circle{% endif %} text-lg"></i>
+            </div>
+            <div>
+                {% if is_admin %}
+                <span class="font-bold">Admin Mode Active:</span>
+                <span class="ml-1 text-slate-700">You are also impersonating user <strong>{{ impersonated_user.username }}</strong> in another tab.</span>
+                {% else %}
+                <span class="font-bold">User Mode Active:</span>
+                <span class="ml-1 text-slate-700">Viewing Git Deploy as <strong>{{ impersonated_user.username }}</strong>. (Admin session: <strong>{{ admin_user.username }}</strong>)</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="shrink-0">
+            {% if is_admin %}
+            <a href="?scope=user" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-md font-semibold text-xs transition-colors shadow-2xs">
+                <i class="mdi mdi-swap-horizontal text-sm"></i>
+                <span>Switch to {{ impersonated_user.username }}'s view</span>
+            </a>
+            {% else %}
+            <a href="?scope=admin" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 rounded-md font-semibold text-xs transition-colors shadow-2xs">
+                <i class="mdi mdi-shield-crown text-sm"></i>
+                <span>Return to Admin view</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Page Header Bar -->
     <div class="bg-white border border-slate-200 rounded-lg p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -380,7 +411,7 @@
             </div>
 
             <!-- Admin Segmented Tabs -->
-            {% if is_admin %}
+            {% if has_admin_rights or is_admin %}
             <div class="grid grid-cols-2 p-1 bg-slate-100 border-b border-slate-200 text-xs font-semibold">
                 <button type="button" id="tabGithubUser" class="py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 bg-white text-brand shadow-xs" onclick="switchGithubModalTab('user')">User Connection</button>
                 <button type="button" id="tabGithubAdmin" class="py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900" onclick="switchGithubModalTab('admin')">Server App Settings</button>
@@ -423,7 +454,7 @@
                     <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-left text-xs text-amber-800 space-y-1">
                         <strong>⚠️ Integration Pending Server Setup</strong>
                         <p>Server-wide GitHub OAuth has not been configured yet.</p>
-                        {% if is_admin %}
+                        {% if has_admin_rights or is_admin %}
                         <p class="font-medium text-amber-900">Click <strong>Server App Settings</strong> above to create the GitHub App automatically.</p>
                         {% else %}
                         <p>Please ask your system administrator to configure the server-wide GitHub App.</p>
@@ -435,7 +466,7 @@
             </div>
 
             <!-- Admin App Settings Tab -->
-            {% if is_admin %}
+            {% if has_admin_rights or is_admin %}
             <div id="githubModalAdminContent" class="p-5 space-y-4 hidden">
                 <p class="text-xs text-slate-600">Generate and link a server-wide GitHub App for this OLSPanel instance.</p>
 

@@ -22,8 +22,12 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-def get_authenticated_user(request):
-    """Retrieves authenticated admin or standard user, respecting admin impersonation"""
+def get_admin_user(request):
+    """
+    Retrieves authenticated admin user.
+    Checks request.admin_user (populated by SeparateAdminSessionMiddleware from session_admin cookie),
+    then checks request.user as a fallback.
+    """
     admin_user = getattr(request, 'admin_user', None)
     if not admin_user and hasattr(request, 'user') and request.user.is_authenticated:
         if getattr(request.user, 'is_superuser', False) or getattr(request.user, 'is_staff', False):
@@ -32,13 +36,86 @@ def get_authenticated_user(request):
             u_data = get_user_data_by_id(request.user.id)
             if u_data and u_data.get('whm') == 1:
                 admin_user = request.user
-        request.admin_user = admin_user
+        if admin_user:
+            request.admin_user = admin_user
+    return admin_user
 
+def get_git_deploy_context(request):
+    """
+    Resolves the execution context for Git Deploy:
+    - Identifies admin_user (from WHM admin session)
+    - Identifies regular_user (from user session)
+    - Detects if an admin is currently impersonating a client user
+    - Determines active scope: 'admin' vs 'user'
+    """
+    admin_user = get_admin_user(request)
+    regular_user = request.user if (hasattr(request, 'user') and request.user.is_authenticated) else None
+
+    is_impersonating = False
+    impersonated_user = None
+    if admin_user and regular_user and admin_user.id != regular_user.id:
+        is_impersonating = True
+        impersonated_user = regular_user
+
+    # Determine scope ('admin' or 'user')
     if admin_user:
-        if request.user and request.user.is_authenticated and request.user != admin_user:
-            return request.user
-        return admin_user
-    return request.user if request.user.is_authenticated else None
+        scope_param = request.GET.get('scope')
+        if scope_param in ('admin', 'user'):
+            active_scope = scope_param
+            if hasattr(request, 'admin_session') and request.admin_session:
+                request.admin_session['git_deploy_scope'] = active_scope
+                request.admin_session.modified = True
+            elif hasattr(request, 'session'):
+                request.session['git_deploy_scope'] = active_scope
+        else:
+            # Check referer: if navigating from WHM, force admin mode
+            referer = request.META.get('HTTP_REFERER', '')
+            if '/whm/' in referer:
+                active_scope = 'admin'
+                if hasattr(request, 'admin_session') and request.admin_session:
+                    request.admin_session['git_deploy_scope'] = 'admin'
+                    request.admin_session.modified = True
+            elif ('/users/' in referer or '/dashboard/' in referer) and '/whm/' not in referer:
+                active_scope = 'user'
+                if hasattr(request, 'admin_session') and request.admin_session:
+                    request.admin_session['git_deploy_scope'] = 'user'
+                    request.admin_session.modified = True
+            else:
+                stored = None
+                if hasattr(request, 'admin_session') and request.admin_session:
+                    stored = request.admin_session.get('git_deploy_scope')
+                if not stored and hasattr(request, 'session'):
+                    stored = request.session.get('git_deploy_scope')
+                # By default, an administrator viewing Git Deploy defaults to 'admin'
+                active_scope = stored if stored in ('admin', 'user') else 'admin'
+    else:
+        active_scope = 'user'
+
+    if active_scope == 'admin' and admin_user:
+        effective_user = admin_user
+        is_admin_mode = True
+        base_template = 'whm/base.html'
+    else:
+        effective_user = regular_user or admin_user
+        is_admin_mode = False
+        base_template = 'users/base.html'
+
+    return {
+        'admin_user': admin_user,
+        'regular_user': regular_user,
+        'effective_user': effective_user,
+        'is_admin': is_admin_mode,
+        'has_admin_rights': bool(admin_user),
+        'is_impersonating': is_impersonating,
+        'impersonated_user': impersonated_user,
+        'scope': active_scope,
+        'base_template': base_template,
+    }
+
+def get_authenticated_user(request):
+    """Compatibility function: returns effective user based on resolved context"""
+    ctx = get_git_deploy_context(request)
+    return ctx['effective_user']
 
 def get_request_protocol(request):
     """
@@ -254,14 +331,14 @@ def deploy_worker(deployment_id, log_id, commit_info=None):
 @loginadminoruser
 def gui_view(request):
     """Main dashboard interface"""
-    user = get_authenticated_user(request)
-    is_impersonating = False
-    admin_user = getattr(request, 'admin_user', None)
-    if admin_user and hasattr(request, 'user') and request.user.is_authenticated:
-        if request.user.id != admin_user.id:
-            is_impersonating = True
-            
-    is_admin = bool(admin_user and not is_impersonating)
+    ctx = get_git_deploy_context(request)
+    user = ctx['effective_user']
+    admin_user = ctx['admin_user']
+    is_admin = ctx['is_admin']
+    has_admin_rights = ctx['has_admin_rights']
+    is_impersonating = ctx['is_impersonating']
+    impersonated_user = ctx['impersonated_user']
+    base_template = ctx['base_template']
     
     # Get standard domains for this user
     if user.is_superuser or is_admin:
@@ -330,12 +407,6 @@ def gui_view(request):
     protocol = get_request_protocol(request)
     webhook_url = f"{protocol}://{host}/module/git_deploy/webhook/"
 
-    # Determine base template (respect impersonation)
-    if is_admin:
-        base_template = 'whm/base.html'
-    else:
-        base_template = 'users/base.html'
-
     return render(request, 'git_deploy/gui.html', {
         'domains': domains,
         'deployments': deployments,
@@ -346,15 +417,22 @@ def gui_view(request):
         'github_client_secret': github_client_secret,
         'github_app_slug': github_app_slug,
         'base_template': base_template,
-        'is_admin': is_admin
+        'is_admin': is_admin,
+        'has_admin_rights': has_admin_rights,
+        'is_impersonating': is_impersonating,
+        'impersonated_user': impersonated_user,
+        'admin_user': admin_user,
+        'scope': ctx['scope'],
     })
 
 
 @loginadminoruser
 def create_deployment_view(request):
     """API endpoint to create a new deployment configuration"""
-    user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    ctx = get_git_deploy_context(request)
+    user = ctx['effective_user']
+    admin_user = ctx['admin_user']
+    is_admin = bool(admin_user)
     
     if request.method != 'POST':
         return JsonResponse({"status": "error", "message": "POST required"}, status=400)
@@ -478,12 +556,19 @@ def create_deployment_view(request):
     if github_error:
         return JsonResponse({"status": "error", "message": github_error}, status=400)
 
+    # Determine proper user ID to own this deployment (domain's owner or active user)
+    owner_id = getattr(domain, 'userid_id', None)
+    if not owner_id and hasattr(domain, 'userid'):
+        owner_id = getattr(domain.userid, 'id', None)
+    if not owner_id:
+        owner_id = user.id
+
     # Save details to MySQL
     with connection.cursor() as cursor:
         cursor.execute("""
             INSERT INTO git_deployments (userid_id, domain_id, repo_url, branch, deploy_path, webhook_secret, ssh_key, ssh_public_key, auto_configured, created_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, [user.id, domain.id, repo_url, branch, final_deploy_path, webhook_secret, ssh_key, ssh_public_key, 1 if auto_configure else 0, datetime.now()])
+        """, [owner_id, domain.id, repo_url, branch, final_deploy_path, webhook_secret, ssh_key, ssh_public_key, 1 if auto_configure else 0, datetime.now()])
 
     return JsonResponse({"status": "success", "message": "Deployment registered successfully"})
 
@@ -653,7 +738,7 @@ def fetch_github_repos_view(request):
 def delete_deployment_view(request, dep_id):
     """Deletes a deployment configuration"""
     user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    is_admin = bool(get_admin_user(request))
     
     # Validate ownership
     with connection.cursor() as cursor:
@@ -675,7 +760,7 @@ def delete_deployment_view(request, dep_id):
 def update_deployment_view(request, dep_id):
     """Updates branch and deploy_path for an existing deployment"""
     user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    is_admin = bool(get_admin_user(request))
     
     if request.method != 'POST':
         return JsonResponse({"status": "error", "message": "POST required"}, status=400)
@@ -710,7 +795,7 @@ def update_deployment_view(request, dep_id):
 def get_logs_view(request, dep_id):
     """Retrieves deployment history and outputs"""
     user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    is_admin = bool(get_admin_user(request))
     
     with connection.cursor() as cursor:
         # Check ownership
@@ -739,7 +824,7 @@ def get_logs_view(request, dep_id):
 def log_stream_view(request, log_id):
     """Streams the log output for a given log ID in real-time"""
     user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    is_admin = bool(get_admin_user(request))
     
     # Verify ownership of the deployment associated with this log
     with connection.cursor() as cursor:
@@ -791,7 +876,7 @@ def log_stream_view(request, log_id):
 def trigger_manual_deploy_view(request, dep_id):
     """Triggers an instantaneous manual deployment in the background"""
     user = get_authenticated_user(request)
-    is_admin = hasattr(request, 'admin_user') and request.admin_user
+    is_admin = bool(get_admin_user(request))
     
     with connection.cursor() as cursor:
         if user.is_superuser or is_admin:
@@ -895,14 +980,8 @@ def webhook_view(request):
 @loginadminoruser
 def manage_settings_view(request):
     """API endpoint to get or save global Git Auto-Deploy plugin configurations"""
-    is_impersonating = False
-    if hasattr(request, 'admin_user') and request.admin_user:
-        if request.user and request.user.is_authenticated and request.user != request.admin_user:
-            is_impersonating = True
-            
-    is_admin = hasattr(request, 'admin_user') and request.admin_user and not is_impersonating
-    
-    if not is_admin:
+    admin_user = get_admin_user(request)
+    if not admin_user:
         return JsonResponse({"status": "error", "message": "Permission denied (Admin required)"}, status=403)
         
     if request.method == 'POST':
@@ -976,7 +1055,8 @@ def oauth_redirect_view(request):
 @loginadminoruser
 def oauth_callback_view(request):
     """Callback receiver that exchanges OAuth auth code for an Access Token"""
-    user = get_authenticated_user(request)
+    ctx = get_git_deploy_context(request)
+    user = ctx['effective_user']
     code = request.GET.get('code')
     state = request.GET.get('state')
     session_state = request.session.get('github_oauth_state')
@@ -1034,7 +1114,8 @@ def oauth_callback_view(request):
             else:
                 cursor.execute("INSERT INTO git_user_tokens (userid_id, token_type, token_value, created_at) VALUES (%s, %s, %s, %s)", [user.id, 'github', access_token, datetime.now()])
                 
-        return redirect('/module/git_deploy/gui/?github_oauth=success')
+        scope_suffix = f"?scope={ctx['scope']}&" if ctx.get('scope') else "?"
+        return redirect(f'/module/git_deploy/gui/{scope_suffix}github_oauth=success')
     except Exception as e:
         return HttpResponse(f"Error during authentication: {str(e)}", status=500)
 
@@ -1042,15 +1123,9 @@ def oauth_callback_view(request):
 @loginadminoruser
 def app_manifest_callback_view(request):
     """Callback receiver that exchanges the App Manifest code for App credentials"""
-    is_impersonating = False
-    if hasattr(request, 'admin_user') and request.admin_user:
-        if request.user and request.user.is_authenticated and request.user != request.admin_user:
-            is_impersonating = True
-            
-    is_admin = hasattr(request, 'admin_user') and request.admin_user and not is_impersonating
-    
-    if not is_admin:
-        return HttpResponse("Permission denied", status=403)
+    admin_user = get_admin_user(request)
+    if not admin_user:
+        return HttpResponse("Permission denied (Admin required)", status=403)
         
     code = request.GET.get('code')
     if not code:
@@ -1112,7 +1187,7 @@ def app_manifest_callback_view(request):
         if app_html_url:
             install_url = f"{app_html_url}/installations/new"
             return redirect(install_url)
-        return redirect('/module/git_deploy/gui/?github_setup=success')
+        return redirect('/module/git_deploy/gui/?scope=admin&github_setup=success')
     except Exception as e:
         return HttpResponse(f"Error during app configuration: {str(e)}", status=500)
 
@@ -1120,14 +1195,8 @@ def app_manifest_callback_view(request):
 @loginadminoruser
 def disconnect_github_view(request):
     """Disconnects the GitHub App and deletes settings from database"""
-    is_impersonating = False
-    if hasattr(request, 'admin_user') and request.admin_user:
-        if request.user and request.user.is_authenticated and request.user != request.admin_user:
-            is_impersonating = True
-            
-    is_admin = hasattr(request, 'admin_user') and request.admin_user and not is_impersonating
-    
-    if not is_admin:
+    admin_user = get_admin_user(request)
+    if not admin_user:
         return JsonResponse({"status": "error", "message": "Permission denied (Admin required)"}, status=403)
         
     if request.method == 'POST':
