@@ -51,53 +51,55 @@ def get_git_deploy_context(request):
     admin_user = get_admin_user(request)
     regular_user = request.user if (hasattr(request, 'user') and request.user.is_authenticated) else None
 
-    is_impersonating = False
-    impersonated_user = None
-    if admin_user and regular_user and admin_user.id != regular_user.id:
-        is_impersonating = True
+    impersonated_user = getattr(request, 'impersonated_user', None)
+    if not impersonated_user and admin_user and regular_user and admin_user.id != regular_user.id:
         impersonated_user = regular_user
 
-    # Determine scope ('admin' or 'user')
-    if admin_user:
-        scope_param = request.GET.get('scope')
+    is_impersonating = bool(impersonated_user)
+
+    # Determine scope: 'admin' vs 'user'
+    scope_param = request.GET.get('scope')
+
+    if is_impersonating:
+        # If admin is currently impersonating a client user, stay in user panel client mode
+        # unless explicitly requested otherwise via ?scope=admin
+        if scope_param == 'admin':
+            active_scope = 'admin'
+        else:
+            active_scope = 'user'
+    elif admin_user and not regular_user:
+        # Admin logged in via WHM session only
+        if scope_param == 'user':
+            active_scope = 'user'
+        else:
+            active_scope = 'admin'
+    elif admin_user and regular_user and admin_user.id == regular_user.id:
+        # Admin logged into user panel as their own root/admin account
         if scope_param in ('admin', 'user'):
             active_scope = scope_param
-            if hasattr(request, 'admin_session') and request.admin_session:
-                request.admin_session['git_deploy_scope'] = active_scope
-                request.admin_session.modified = True
-            elif hasattr(request, 'session'):
-                request.session['git_deploy_scope'] = active_scope
+        elif request.path.startswith('/whm/') or '/whm/' in request.META.get('HTTP_REFERER', ''):
+            active_scope = 'admin'
         else:
-            # Check referer: if navigating from WHM, force admin mode
-            referer = request.META.get('HTTP_REFERER', '')
-            if '/whm/' in referer:
-                active_scope = 'admin'
-                if hasattr(request, 'admin_session') and request.admin_session:
-                    request.admin_session['git_deploy_scope'] = 'admin'
-                    request.admin_session.modified = True
-            elif ('/users/' in referer or '/dashboard/' in referer) and '/whm/' not in referer:
-                active_scope = 'user'
-                if hasattr(request, 'admin_session') and request.admin_session:
-                    request.admin_session['git_deploy_scope'] = 'user'
-                    request.admin_session.modified = True
-            else:
-                stored = None
-                if hasattr(request, 'admin_session') and request.admin_session:
-                    stored = request.admin_session.get('git_deploy_scope')
-                if not stored and hasattr(request, 'session'):
-                    stored = request.session.get('git_deploy_scope')
-                # By default, an administrator viewing Git Deploy defaults to 'admin'
-                active_scope = stored if stored in ('admin', 'user') else 'admin'
+            active_scope = 'user'
     else:
+        # Regular client user only
         active_scope = 'user'
+
+    # Save active scope in session if appropriate
+    if hasattr(request, 'admin_session') and request.admin_session:
+        request.admin_session['git_deploy_scope'] = active_scope
+        request.admin_session.modified = True
+    elif hasattr(request, 'session'):
+        request.session['git_deploy_scope'] = active_scope
 
     if active_scope == 'admin' and admin_user:
         effective_user = admin_user
         is_admin_mode = True
         base_template = 'whm/base.html'
+        # In admin mode, the top impersonation banner is not shown for the admin interface
         is_impersonating = False
     else:
-        effective_user = regular_user or admin_user
+        effective_user = impersonated_user or regular_user or admin_user
         is_admin_mode = False
         base_template = 'users/base.html'
 
@@ -409,6 +411,7 @@ def gui_view(request):
     webhook_url = f"{protocol}://{host}/module/git_deploy/webhook/"
 
     return render(request, 'git_deploy/gui.html', {
+        'user': user,
         'domains': domains,
         'deployments': deployments,
         'webhook_url': webhook_url,

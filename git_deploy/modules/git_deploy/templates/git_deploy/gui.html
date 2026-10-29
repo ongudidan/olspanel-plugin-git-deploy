@@ -3,173 +3,162 @@
 {% block title %}Git Auto-Deploy Settings{% endblock title %}
 
 {% block content %}
+<div class="space-y-3 w-full">
 
-    {% if not is_admin and is_impersonating %}
-    <!-- Impersonation Notice & Context Switcher Bar (User Mode Only) -->
-    <div class="rounded-lg p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs border bg-indigo-50 border-indigo-200 text-indigo-900">
+    <!-- Top Compact Header (Matching Database List Layout) -->
+    <div class="bg-white border border-slate-200 rounded-lg px-4 py-2.5 shadow-xs flex items-center justify-between gap-3">
         <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-indigo-100 text-indigo-700">
-                <i class="mdi mdi-account-circle text-lg"></i>
+            <div class="w-8 h-8 rounded-md bg-emerald-50 text-brand border border-emerald-100 flex items-center justify-center shrink-0">
+                <i class="mdi mdi-git text-lg"></i>
             </div>
             <div>
-                <span class="font-bold">User Mode Active:</span>
-                <span class="ml-1 text-slate-700">Viewing Git Deploy as <strong>{{ impersonated_user.username }}</strong>. (Admin session: <strong>{{ admin_user.username }}</strong>)</span>
+                <h4 class="text-xs font-bold text-slate-900 m-0 leading-tight">Git Auto-Deploy</h4>
+                <p class="text-[11px] text-slate-500 m-0 leading-tight">Automate production deployments on every GitHub or Git push</p>
             </div>
         </div>
-        <div class="shrink-0">
-            <a href="?scope=admin" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 rounded-md font-semibold text-xs transition-colors shadow-2xs">
-                <i class="mdi mdi-shield-crown text-sm"></i>
-                <span>Return to Admin view</span>
+        <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span id="connectionsCountBadge">{{ deployments|length }}</span> Connection{{ deployments|length|pluralize }}
+            </span>
+            {% if not is_admin and is_impersonating %}
+            <a href="?scope=admin" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-xs font-semibold shadow-xs transition-colors flex items-center gap-1" title="Switch to Admin view">
+                <i class="mdi mdi-shield-crown text-xs"></i>
+                <span class="hidden sm:inline">Admin View</span>
             </a>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Page Header Bar -->
-    <div class="bg-white border border-slate-200 rounded-lg p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-brand border border-emerald-100 flex items-center justify-center shrink-0">
-                <i class="mdi mdi-git text-2xl"></i>
-            </div>
-            <div>
-                <h4 class="text-base font-bold text-slate-900 m-0 leading-tight">Git Auto-Deploy</h4>
-                <p class="text-xs text-slate-500 m-0 mt-0.5">Automate production deployments on every GitHub or Git push</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-2.5 flex-wrap">
-            <button type="button" onclick="openModal('githubTokenModal')" class="inline-flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-md text-xs font-semibold shadow-xs transition-colors" title="Configure GitHub Account or GitHub App">
-                <i class="mdi mdi-github text-base leading-none"></i>
+            {% elif is_admin and impersonated_user %}
+            <a href="?scope=user" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-xs font-semibold shadow-xs transition-colors flex items-center gap-1" title="Switch to client view">
+                <i class="mdi mdi-account text-xs"></i>
+                <span class="hidden sm:inline">{{ impersonated_user.username }}'s View</span>
+            </a>
+            {% endif %}
+            <button type="button" onclick="openModal('githubTokenModal')" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-xs transition-colors flex items-center gap-1 cursor-pointer" title="Configure GitHub Account or GitHub App">
+                <i class="mdi mdi-github text-xs"></i>
                 <span>{% if has_github_token %}GitHub Connected{% else %}Connect GitHub{% endif %}</span>
             </button>
-            <button type="button" onclick="openModal('addConnectionModal')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
-                <i class="mdi mdi-plus text-base leading-none"></i>
+            <button type="button" onclick="openModal('addConnectionModal')" class="px-2.5 py-1 bg-brand hover:bg-brand/90 text-white rounded text-xs font-semibold shadow-xs transition-colors flex items-center gap-1 cursor-pointer">
+                <i class="mdi mdi-plus text-xs"></i>
                 <span>Connect Repository</span>
             </button>
         </div>
     </div>
 
-    <!-- Active Deployments Section Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-            <h5 class="text-xs font-bold text-slate-900 uppercase tracking-wider m-0">Active Connections</h5>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200 font-mono" id="connectionsCountPill">{{ deployments|length }}</span>
-        </div>
-        <div class="flex items-center gap-2.5">
-            {% if deployments %}
-            <div class="relative">
-                <i class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                <input type="text" id="filterConnectionsInput" placeholder="Filter connections..." oninput="filterConnections()" class="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand w-48 sm:w-56 transition-all">
+    <!-- SECTION: Active Connections (Matching Database Card Style) -->
+    <div class="bg-white border border-slate-200 rounded-lg shadow-xs" id="tableContainerWrapper">
+        <div class="px-4 py-2.5 bg-slate-50/70 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2 rounded-t-lg">
+            <h5 class="text-xs font-bold text-slate-900 m-0 flex items-center gap-1.5">
+                <i class="mdi mdi-source-branch text-brand text-sm"></i> Active Connections
+            </h5>
+            <div class="flex items-center gap-2">
+                <div class="relative w-full sm:w-60">
+                    <i class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="filterConnectionsInput" placeholder="Search connections..." oninput="filterConnections()" class="w-full pl-8 pr-2.5 py-1 bg-white border border-slate-200 rounded text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-all" autocomplete="off">
+                </div>
+                <button type="button" id="btnRefreshTable" onclick="refreshDeploymentsTable(this)" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-xs transition-colors flex items-center gap-1 cursor-pointer" title="Refresh connections table">
+                    <i class="mdi mdi-refresh text-xs leading-none" id="refreshIcon"></i>
+                    <span>Refresh</span>
+                </button>
             </div>
-            {% endif %}
-            <button type="button" id="btnRefreshTable" onclick="refreshDeploymentsTable(this)" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors" title="Refresh connections table">
-                <i class="mdi mdi-refresh text-sm leading-none" id="refreshIcon"></i>
-                <span>Refresh</span>
-            </button>
         </div>
-    </div>
 
-    <div id="tableContainerWrapper">
         {% if not deployments %}
         <!-- Empty State -->
-        <div class="bg-white border border-slate-200 rounded-lg p-10 text-center shadow-xs">
-            <div class="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
-                <i class="mdi mdi-source-repository-multiple text-3xl"></i>
+        <div class="py-12 px-6 text-center rounded-b-lg" style="padding-top: 3rem; padding-bottom: 3rem;">
+            <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                <i class="mdi mdi-source-repository-multiple text-2xl"></i>
             </div>
-            <h6 class="text-sm font-bold text-slate-900 mb-1">No connected repositories found</h6>
-            <p class="text-xs text-slate-500 max-w-md mx-auto mb-4">Link a domain to a Git repository to enable automated continuous deployments on push.</p>
-            <button type="button" onclick="openModal('addConnectionModal')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
-                <i class="mdi mdi-plus text-sm"></i>
+            <h6 class="text-xs font-bold text-slate-900 mb-1">No connected repositories found</h6>
+            <p class="text-[11px] text-slate-500 max-w-md mx-auto mb-4">Link a domain to a Git repository to enable automated continuous deployments on push.</p>
+            <button type="button" onclick="openModal('addConnectionModal')" class="px-3.5 py-1.5 bg-brand hover:bg-brand/90 text-white rounded text-xs font-semibold shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                <i class="mdi mdi-plus text-xs"></i>
                 <span>Connect First Repository</span>
             </button>
         </div>
         {% else %}
-        <!-- Deployments Table Card -->
-        <div class="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs text-slate-700" id="deploymentsTable">
-                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
-                        <tr>
-                            <th class="py-3 px-3 text-center w-10">#</th>
-                            <th class="py-3 px-4 w-5/12">Domain &amp; Repository</th>
-                            <th class="py-3 px-4 w-4/12">Deploy Path</th>
-                            <th class="py-3 px-4 text-right w-3/12">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        {% for dep in deployments %}
-                        <tr id="depRow_{{ dep.id }}" data-domain="{{ dep.domain|lower }}" data-repo="{{ dep.repo_url|lower }}" class="hover:bg-slate-50/60 transition-colors">
-                            
-                            <!-- Col 0: Row Numbering -->
-                            <td class="py-3.5 px-3 text-center font-mono font-bold text-slate-400 text-[11px]">
-                                {{ forloop.counter }}
-                            </td>
+        <!-- Deployments Table -->
+        <div class="overflow-x-auto rounded-b-lg">
+            <table class="w-full text-xs text-left text-slate-700" id="deploymentsTable">
+                <thead class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                    <tr>
+                        <th class="px-3 py-2 text-center w-10">#</th>
+                        <th class="px-3 py-2 w-5/12">Domain &amp; Repository</th>
+                        <th class="px-3 py-2 w-4/12">Deploy Path</th>
+                        <th class="px-3 py-2 text-right w-3/12">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for dep in deployments %}
+                    <tr id="depRow_{{ dep.id }}" data-domain="{{ dep.domain|lower }}" data-repo="{{ dep.repo_url|lower }}" class="hover:bg-slate-50/80 transition-colors">
+                        
+                        <!-- Col 0: Row Numbering -->
+                        <td class="px-3 py-2 text-center font-mono font-bold text-slate-400 text-[11px]">
+                            {{ forloop.counter }}
+                        </td>
 
-                            <!-- Col 1: Domain & Repository -->
-                            <td class="py-3.5 px-4">
-                                <div class="space-y-1">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="font-bold text-slate-900 text-xs" title="{{ dep.domain }}">{{ dep.domain }}</span>
-                                        
-                                        <!-- Branch Pill -->
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200" title="Target deploy branch">
-                                            <i class="mdi mdi-source-branch text-xs text-slate-500"></i>
-                                            {{ dep.branch }}
-                                        </span>
+                        <!-- Col 1: Domain & Repository -->
+                        <td class="px-3 py-2">
+                            <div class="space-y-0.5">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="font-bold text-slate-900 text-xs" title="{{ dep.domain }}">{{ dep.domain }}</span>
+                                    
+                                    <!-- Branch Pill -->
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200" title="Target deploy branch">
+                                        <i class="mdi mdi-source-branch text-[11px] text-slate-500"></i>
+                                        {{ dep.branch }}
+                                    </span>
 
-                                        {% if dep.auto_configured %}
-                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title="Auto-managed on GitHub">
-                                            <i class="mdi mdi-lightning-bolt text-xs"></i>
-                                            Auto
-                                        </span>
-                                        {% else %}
-                                        <button type="button" onclick="openWebhookModal('{{ dep.id }}', '{{ dep.domain|escapejs }}', '{{ webhook_url }}?secret={{ dep.webhook_secret }}', '{{ dep.ssh_public_key|default:''|escapejs }}')" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors" title="View Webhook URL & Deploy Key">
-                                            <i class="mdi mdi-key-variant text-xs"></i>
-                                            Keys
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                    <div class="flex items-center gap-1 text-[11px] text-slate-500 font-mono">
-                                        <a href="{{ dep.repo_url }}" target="_blank" class="hover:text-brand inline-flex items-center gap-1 truncate max-w-xs sm:max-w-md transition-colors" title="{{ dep.repo_url }}">
-                                            <i class="mdi mdi-git text-slate-400"></i>
-                                            <span class="truncate">{{ dep.repo_url }}</span>
-                                            <i class="mdi mdi-open-in-new text-[10px] text-slate-400"></i>
-                                        </a>
-                                    </div>
+                                    {% if dep.auto_configured %}
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title="Auto-managed on GitHub">
+                                        <i class="mdi mdi-lightning-bolt text-[11px]"></i>
+                                        Auto
+                                    </span>
+                                    {% else %}
+                                    <button type="button" onclick="openWebhookModal('{{ dep.id }}', '{{ dep.domain|escapejs }}', '{{ webhook_url }}?secret={{ dep.webhook_secret }}', '{{ dep.ssh_public_key|default:''|escapejs }}')" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer" title="View Webhook URL & Deploy Key">
+                                        <i class="mdi mdi-key-variant text-[11px]"></i>
+                                        Keys
+                                    </button>
+                                    {% endif %}
                                 </div>
-                            </td>
-
-                            <!-- Col 2: Deploy Path -->
-                            <td class="py-3.5 px-4">
-                                <div class="inline-flex items-center gap-1.5 max-w-full">
-                                    <code class="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-mono text-slate-700 truncate max-w-xs" title="{{ dep.deploy_path }}">{{ dep.deploy_path }}</code>
-                                    <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.deploy_path|escapejs }}')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors" title="Edit deploy path">
-                                        <i class="mdi mdi-pencil text-xs"></i>
-                                    </button>
+                                <div class="flex items-center gap-1 text-[11px] text-slate-500 font-mono">
+                                    <a href="{{ dep.repo_url }}" target="_blank" class="hover:text-brand inline-flex items-center gap-1 truncate max-w-xs sm:max-w-md transition-colors" title="{{ dep.repo_url }}">
+                                        <i class="mdi mdi-git text-slate-400"></i>
+                                        <span class="truncate">{{ dep.repo_url }}</span>
+                                        <i class="mdi mdi-open-in-new text-[10px] text-slate-400"></i>
+                                    </a>
                                 </div>
-                            </td>
+                            </div>
+                        </td>
 
-                            <!-- Col 3: Actions -->
-                            <td class="py-3.5 px-4 text-right">
-                                <div class="inline-flex items-center gap-1.5 justify-end">
-                                    <button type="button" onclick="triggerManualDeploy({{ dep.id }}, this)" class="inline-flex items-center gap-1 px-2.5 py-1 bg-brand hover:bg-brand/90 text-white rounded text-xs font-semibold shadow-2xs transition-colors" title="Run manual deploy now">
-                                        <i class="mdi mdi-play text-xs"></i>
-                                        <span>Deploy</span>
-                                    </button>
-                                    <button type="button" onclick="openLogsModal({{ dep.id }})" class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold transition-colors" title="View deployment history and logs">
-                                        <i class="mdi mdi-text-box-outline text-xs"></i>
-                                        <span>Logs</span>
-                                    </button>
-                                    <button type="button" onclick="confirmDelete({{ dep.id }})" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors" title="Delete connection link">
-                                        <i class="mdi mdi-trash-can-outline text-sm"></i>
-                                    </button>
-                                </div>
-                            </td>
+                        <!-- Col 2: Deploy Path -->
+                        <td class="px-3 py-2">
+                            <div class="inline-flex items-center gap-1.5 max-w-full">
+                                <code class="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-[11px] font-mono text-slate-700 truncate max-w-xs" title="{{ dep.deploy_path }}">{{ dep.deploy_path }}</code>
+                                <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.deploy_path|escapejs }}')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer" title="Edit deploy path">
+                                    <i class="mdi mdi-pencil text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
 
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                        <!-- Col 3: Actions (Matching Database List action styling) -->
+                        <td class="px-3 py-2 text-right space-x-1 whitespace-nowrap">
+                            <button type="button" onclick="triggerManualDeploy({{ dep.id }}, this)" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-white bg-brand hover:bg-brand/90 rounded shadow-2xs transition-colors cursor-pointer" title="Run manual deploy now">
+                                <i class="mdi mdi-play text-xs"></i>
+                                <span>Deploy</span>
+                            </button>
+                            <button type="button" onclick="openLogsModal({{ dep.id }})" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded border border-slate-200 transition-colors cursor-pointer" title="View deployment history and logs">
+                                <i class="mdi mdi-text-box-outline text-xs"></i>
+                                <span>Logs</span>
+                            </button>
+                            <button type="button" onclick="confirmDelete({{ dep.id }})" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded border border-rose-200 transition-colors cursor-pointer" title="Delete connection link">
+                                <i class="mdi mdi-delete-outline text-xs"></i>
+                                <span>Delete</span>
+                            </button>
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
         {% endif %}
     </div>
@@ -580,8 +569,7 @@
     bottom: 0 !important;
     z-index: 99999 !important;
 }
-#logsDrawerModal.hidden, #addConnectionModal.hidden, #editConnectionModal.hidden, #githubTokenModal.hidden, #webhookDetailsModal.hidden,
-.hidden {
+#logsDrawerModal.hidden, #addConnectionModal.hidden, #editConnectionModal.hidden, #githubTokenModal.hidden, #webhookDetailsModal.hidden {
     display: none !important;
 }
 #logsDrawerPanel {
@@ -630,10 +618,10 @@ function refreshDeploymentsTable(btn) {
             currentWrapper.innerHTML = newWrapper.innerHTML;
         }
 
-        const newPill = doc.getElementById('connectionsCountPill');
-        const currentPill = document.getElementById('connectionsCountPill');
-        if (newPill && currentPill) {
-            currentPill.textContent = newPill.textContent;
+        const newBadge = doc.getElementById('connectionsCountBadge') || doc.getElementById('connectionsCountPill');
+        const currentBadge = document.getElementById('connectionsCountBadge') || document.getElementById('connectionsCountPill');
+        if (newBadge && currentBadge) {
+            currentBadge.textContent = newBadge.textContent;
         }
 
         filterConnections();
@@ -1281,8 +1269,8 @@ function escapeHtml(text) {
 }
 
 // GitHub Repos Picker & OAuth Handlers
-let githubRepos = [];
-let githubReposLoaded = false;
+var githubRepos = window.githubRepos || [];
+var githubReposLoaded = window.githubReposLoaded || false;
 
 function submitTokenForm(action) {
     const token = document.getElementById('githubPatInput').value.trim();
@@ -1540,7 +1528,7 @@ function generateGithubManifest(event, button) {
     button.closest('form').submit();
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+function handleUrlAlerts() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('github_oauth') === 'success') {
         alert("🎉 GitHub account successfully connected via OAuth!");
@@ -1551,6 +1539,47 @@ window.addEventListener('DOMContentLoaded', () => {
         const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
         window.history.replaceState({path: cleanUrl}, '', cleanUrl);
     }
-});
+}
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    handleUrlAlerts();
+} else {
+    window.addEventListener('DOMContentLoaded', handleUrlAlerts);
+}
+
+// Expose all functions to global window scope so onclick and SPA handlers never fail
+window.filterConnections = filterConnections;
+window.refreshDeploymentsTable = refreshDeploymentsTable;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.handleBackdropClick = handleBackdropClick;
+window.handleDrawerBackdrop = handleDrawerBackdrop;
+window.openWebhookModal = openWebhookModal;
+window.copyInputText = copyInputText;
+window.toggleCustomDropdown = toggleCustomDropdown;
+window.selectCustomOption = selectCustomOption;
+window.filterCustomOptions = filterCustomOptions;
+window.showCreateFormError = showCreateFormError;
+window.submitCreateForm = submitCreateForm;
+window.openEditModal = openEditModal;
+window.submitEditForm = submitEditForm;
+window.triggerManualDeploy = triggerManualDeploy;
+window.confirmDelete = confirmDelete;
+window.getStatusBadgeHtml = getStatusBadgeHtml;
+window.createLogAccordionElement = createLogAccordionElement;
+window.streamLogOutput = streamLogOutput;
+window.refreshLogsList = refreshLogsList;
+window.openLogsModal = openLogsModal;
+window.toggleLogBody = toggleLogBody;
+window.escapeHtml = escapeHtml;
+window.submitTokenForm = submitTokenForm;
+window.disconnectGithubApp = disconnectGithubApp;
+window.switchRepoTab = switchRepoTab;
+window.toggleGithubDropdown = toggleGithubDropdown;
+window.loadGithubRepos = loadGithubRepos;
+window.renderGithubOptions = renderGithubOptions;
+window.filterGithubOptions = filterGithubOptions;
+window.selectGithubRepo = selectGithubRepo;
+window.switchGithubModalTab = switchGithubModalTab;
+window.generateGithubManifest = generateGithubManifest;
 </script>
 {% endblock content %}
