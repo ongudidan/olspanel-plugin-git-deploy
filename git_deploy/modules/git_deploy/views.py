@@ -1129,6 +1129,34 @@ def oauth_callback_view(request):
                 cursor.execute("INSERT INTO git_user_tokens (userid_id, token_type, token_value, created_at) VALUES (%s, %s, %s, %s)", [user.id, 'github', access_token, datetime.now()])
                 
         scope_suffix = f"?scope={ctx['scope']}&" if ctx.get('scope') else "?"
+
+        # GitHub App user tokens (ghu_) can only see private repos where the App is INSTALLED.
+        # The OAuth authorize screen never shows the repository picker, so if the App is not
+        # installed on this GitHub account yet, send the user to the installation page where
+        # they choose "All repositories" or specific ones. GitHub then returns to the App's
+        # setup_url (/module/git_deploy/gui/) with ?installation_id=...&setup_action=install.
+        if access_token.startswith('ghu_'):
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT setting_value FROM git_settings WHERE setting_key = 'github_app_slug'")
+                slug_row = cursor.fetchone()
+            app_slug = slug_row[0] if slug_row and slug_row[0] else ''
+            if app_slug:
+                try:
+                    inst_res = requests.get(
+                        "https://api.github.com/user/installations?per_page=100",
+                        headers={
+                            "Accept": "application/vnd.github+json",
+                            "Authorization": f"Bearer {access_token}",
+                            "X-GitHub-Api-Version": "2022-11-28",
+                        },
+                        timeout=15,
+                    )
+                    installations = inst_res.json().get("installations", []) if inst_res.status_code == 200 else []
+                except Exception:
+                    installations = []
+                if not installations:
+                    return redirect(f"https://github.com/apps/{app_slug}/installations/new")
+
         return redirect(f'/module/git_deploy/gui/{scope_suffix}github_oauth=success')
     except Exception as e:
         return HttpResponse(f"Error during authentication: {str(e)}", status=500)

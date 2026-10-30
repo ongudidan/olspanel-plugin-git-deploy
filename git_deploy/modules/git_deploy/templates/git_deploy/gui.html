@@ -407,6 +407,12 @@
                     <h6 class="text-sm font-bold text-slate-900 mb-1">GitHub Account Connected</h6>
                     <p class="text-xs text-slate-600 mb-4">Your GitHub profile is authorized. You can select your repositories directly and auto-register webhooks.</p>
                     <div class="flex items-center justify-center gap-2.5">
+                        {% if github_app_slug %}
+                        <a href="https://github.com/apps/{{ github_app_slug }}/installations/new" data-no-spa="true" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-semibold transition-colors" title="Choose which repositories (all or specific) the app can access">
+                            <i class="mdi mdi-source-repository text-sm"></i>
+                            <span>Manage Repository Access</span>
+                        </a>
+                        {% endif %}
                         <button type="button" onclick="closeModal('githubTokenModal')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors">Close</button>
                         <button type="button" onclick="submitTokenForm('delete')" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-xs font-semibold transition-colors">Disconnect</button>
                     </div>
@@ -421,7 +427,7 @@
                     
                     {% if oauth_configured %}
                     <div class="flex items-center justify-center gap-2.5">
-                        <a href="{% url 'git_deploy_oauth_redirect' %}" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
+                        <a href="{% url 'git_deploy_oauth_redirect' %}" data-no-spa="true" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-semibold shadow-xs transition-colors">
                             <i class="mdi mdi-github text-base"></i>
                             <span>Authorize GitHub Account</span>
                         </a>
@@ -1532,6 +1538,10 @@ function handleUrlAlerts() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('github_oauth') === 'success') {
         alert("🎉 GitHub account successfully connected via OAuth!");
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+    } else if (urlParams.get('setup_action') === 'install' || urlParams.get('setup_action') === 'update') {
+        alert("🎉 GitHub repository access configured! Your selected repositories are now available.");
         const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
         window.history.replaceState({path: cleanUrl}, '', cleanUrl);
     } else if (urlParams.get('github_setup') === 'success') {
