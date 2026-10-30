@@ -133,7 +133,7 @@
                         <td class="px-3 py-2">
                             <div class="inline-flex items-center gap-1.5 max-w-full">
                                 <code class="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-[11px] font-mono text-slate-700 truncate max-w-xs" title="{{ dep.deploy_path }}">{{ dep.deploy_path }}</code>
-                                <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.deploy_path|escapejs }}')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer" title="Edit deploy path">
+                                <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.base_path|escapejs }}', '{{ dep.deploy_subdir|escapejs }}')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer" title="Edit deploy path">
                                     <i class="mdi mdi-pencil text-xs"></i>
                                 </button>
                             </div>
@@ -165,55 +165,55 @@
 
     <!-- MODAL 1: Connect Repository Modal -->
     <div id="addConnectionModal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4" onclick="handleBackdropClick(event, 'addConnectionModal')">
-        <div class="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            
-            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h5 class="text-sm font-bold text-slate-900 m-0 flex items-center gap-2">
-                    <i class="mdi mdi-plus-circle-outline text-brand text-base"></i> Connect Repository
+        <div class="bg-white border border-slate-200 rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+
+            <div class="px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
+                <h5 class="text-xs font-bold text-slate-900 m-0 flex items-center gap-1.5">
+                    <i class="mdi mdi-plus-circle-outline text-brand text-sm"></i> Connect Repository
                 </h5>
                 <button type="button" onclick="closeModal('addConnectionModal')" class="text-slate-400 hover:text-slate-700 transition-colors" aria-label="Close">
-                    <i class="mdi mdi-close text-lg"></i>
+                    <i class="mdi mdi-close text-base"></i>
                 </button>
             </div>
 
             <form id="createDeploymentForm" onsubmit="submitCreateForm(event)" class="flex flex-col flex-1 overflow-hidden">
                 {% csrf_token %}
-                <div class="p-5 space-y-4 overflow-y-auto flex-1">
-                    <div id="createFormError" class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-md hidden"></div>
-                    
+                <div class="px-4 py-3 space-y-3 overflow-y-auto flex-1">
+                    <div id="createFormError" class="p-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded hidden"></div>
+
                     <!-- Domain Selection -->
-                    <div class="space-y-1.5">
-                        <label class="block text-xs font-semibold text-slate-700">Target Domain / Subdomain</label>
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-semibold text-slate-700">Target Domain / Subdomain</label>
                         <div class="relative" id="domainSelectContainer">
-                            <select name="domain_id" id="hiddenDomainSelect" required style="display: none !important;">
+                            <select name="domain_id" id="hiddenDomainSelect" data-no-search="true" class="no-searchable-select" required style="display: none !important;">
                                 <option value="" disabled selected>-- Choose a domain --</option>
                                 {% for dom in domains %}
-                                    <option value="{{ dom.id }}" data-path="{{ dom.path }}">{{ dom.domain }}</option>
+                                    <option value="{{ dom.id }}" data-path="{{ dom.base_path }}">{{ dom.domain }}</option>
                                 {% endfor %}
                             </select>
-                            
-                            <div class="w-full px-3 py-2 bg-white border border-slate-200 rounded-md text-xs text-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-colors" onclick="toggleCustomDropdown()" id="customSelectTrigger">
+
+                            <div class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-colors" onclick="toggleCustomDropdown()" id="customSelectTrigger">
                                 <div class="flex items-center gap-2 truncate">
                                     <i class="mdi mdi-web text-slate-400 text-sm"></i>
                                     <span id="customSelectLabel" class="text-slate-500">-- Choose a domain --</span>
                                 </div>
                                 <i class="mdi mdi-chevron-down text-slate-400 transition-transform" id="customSelectArrow"></i>
                             </div>
-                            
+
                             <div class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 hidden" id="customSelectDropdown">
-                                <div class="p-2 border-b border-slate-100">
+                                <div class="p-1.5 border-b border-slate-100">
                                     <div class="relative">
                                         <i class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                                         <input type="text" id="customSelectSearch" placeholder="Search domains..." oninput="filterCustomOptions()" class="w-full pl-7 pr-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-slate-800 focus:outline-none focus:border-brand">
                                     </div>
                                 </div>
-                                <div id="customSelectOptionsList" class="max-h-48 overflow-y-auto divide-y divide-slate-50 text-xs">
+                                <div id="customSelectOptionsList" class="max-h-44 overflow-y-auto divide-y divide-slate-50 text-xs">
                                     {% for dom in domains %}
-                                        <div class="px-3 py-2 cursor-pointer hover:bg-emerald-50 hover:text-brand transition-colors custom-select-option" data-value="{{ dom.id }}" data-path="{{ dom.path }}" onclick="selectCustomOption('{{ dom.id }}', '{{ dom.domain|escapejs }}', '{{ dom.path|escapejs }}')">
+                                        <div class="px-3 py-1.5 cursor-pointer hover:bg-emerald-50 hover:text-brand transition-colors custom-select-option" data-value="{{ dom.id }}" data-path="{{ dom.base_path }}" onclick="selectCustomOption('{{ dom.id }}', '{{ dom.domain|escapejs }}', '{{ dom.base_path|escapejs }}')">
                                             {{ dom.domain }}
                                         </div>
                                     {% endfor %}
-                                    <div id="noDomainsFound" class="px-3 py-3 text-center text-slate-400 hidden">
+                                    <div id="noDomainsFound" class="px-3 py-2.5 text-center text-slate-400 hidden">
                                         No matching domains found
                                     </div>
                                 </div>
@@ -221,97 +221,92 @@
                         </div>
                     </div>
 
-                    <!-- Deployment Directory Path Input -->
-                    <div class="space-y-1.5">
+                    <!-- Deployment Directory (locked base + optional sub-folder) -->
+                    <div class="space-y-1">
                         <div class="flex items-center justify-between">
-                            <label class="block text-xs font-semibold text-slate-700">Deployment Directory Path</label>
-                            <span class="text-[11px] text-slate-400">Target document root</span>
+                            <label class="block text-[11px] font-semibold text-slate-700">Deployment Directory</label>
+                            <span class="text-[10px] text-slate-400">Leave blank to deploy to the domain folder</span>
                         </div>
-                        <div class="relative">
-                            <i class="mdi mdi-folder-outline absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                            <input type="text" name="deploy_path" id="deployPathInput" required placeholder="/home/username/public_html" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
+                        <div class="flex items-stretch border border-slate-200 rounded overflow-hidden focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
+                            <span id="deployBaseLabel" class="inline-flex items-center gap-1 px-2.5 bg-slate-100 border-r border-slate-200 text-[11px] font-mono text-slate-600 whitespace-nowrap max-w-[60%] truncate" title="Locked to the folder assigned to this domain">
+                                <i class="mdi mdi-lock-outline text-slate-400 text-xs"></i><span id="deployBaseText">Select a domain first</span>
+                            </span>
+                            <input type="text" name="deploy_subdir" id="deploySubdirInput" placeholder="optional/sub-folder" autocomplete="off" class="flex-1 min-w-0 px-2.5 py-1.5 bg-white text-xs font-mono text-slate-800 focus:outline-none border-0">
                         </div>
                     </div>
 
                     <!-- Repository Selection Source -->
                     <div class="space-y-2">
                         {% if has_github_token %}
-                        <!-- Segmented Switcher -->
-                        <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold">
-                            <button type="button" id="tabSelectRepo" class="py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 bg-white text-brand shadow-xs" onclick="switchRepoTab('select')">
-                                <i class="mdi mdi-github text-sm"></i>
+                        <div class="grid grid-cols-2 p-0.5 bg-slate-100 rounded border border-slate-200 text-[11px] font-semibold">
+                            <button type="button" id="tabSelectRepo" class="py-1 px-2 rounded transition-all flex items-center justify-center gap-1 bg-white text-brand shadow-xs" onclick="switchRepoTab('select')">
+                                <i class="mdi mdi-github text-xs"></i>
                                 <span>GitHub Repositories</span>
                             </button>
-                            <button type="button" id="tabManualRepo" class="py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900" onclick="switchRepoTab('manual')">
-                                <i class="mdi mdi-link-variant text-sm"></i>
+                            <button type="button" id="tabManualRepo" class="py-1 px-2 rounded transition-all flex items-center justify-center gap-1 text-slate-600 hover:text-slate-900" onclick="switchRepoTab('manual')">
+                                <i class="mdi mdi-link-variant text-xs"></i>
                                 <span>Custom Git URL</span>
                             </button>
                         </div>
                         {% endif %}
 
-                        <!-- GitHub Repo Picker -->
                         {% if has_github_token %}
-                        <div id="githubSelectRepoContainer" class="space-y-1.5">
-                            <label class="block text-xs font-semibold text-slate-700">Choose GitHub Repository</label>
+                        <div id="githubSelectRepoContainer" class="space-y-1">
+                            <label class="block text-[11px] font-semibold text-slate-700">Choose GitHub Repository</label>
                             <div class="relative" id="githubSelectContainer">
-                                <div class="w-full px-3 py-2 bg-white border border-slate-200 rounded-md text-xs text-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-colors" id="githubSelectTrigger" onclick="toggleGithubDropdown()">
+                                <div class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-colors" id="githubSelectTrigger" onclick="toggleGithubDropdown()">
                                     <div class="flex items-center gap-2 truncate">
                                         <i class="mdi mdi-github text-slate-400 text-sm"></i>
                                         <span id="githubSelectLabel" class="text-slate-500">Click to select repository...</span>
                                     </div>
                                     <i class="mdi mdi-chevron-down text-slate-400 transition-transform" id="githubSelectArrow"></i>
                                 </div>
-                                
+
                                 <div class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 hidden" id="githubSelectDropdown">
-                                    <div class="p-2 border-b border-slate-100">
+                                    <div class="p-1.5 border-b border-slate-100">
                                         <div class="relative">
                                             <i class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                                             <input type="text" id="githubSelectSearch" placeholder="Search repositories..." oninput="filterGithubOptions()" class="w-full pl-7 pr-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-slate-800 focus:outline-none focus:border-brand">
                                         </div>
                                     </div>
-                                    <div id="githubSelectOptionsList" class="max-h-48 overflow-y-auto divide-y divide-slate-50 text-xs">
-                                        <div class="p-4 text-center text-slate-400" id="githubReposLoading">Loading repositories...</div>
+                                    <div id="githubSelectOptionsList" class="max-h-44 overflow-y-auto divide-y divide-slate-50 text-xs">
+                                        <div class="p-3 text-center text-slate-400" id="githubReposLoading">Loading repositories...</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         {% endif %}
 
-                        <!-- Manual Git URL Input -->
-                        <div id="manualRepoUrlContainer" class="space-y-1.5 {% if has_github_token %}hidden{% endif %}">
-                            <label class="block text-xs font-semibold text-slate-700">Git Repository URL</label>
+                        <div id="manualRepoUrlContainer" class="space-y-1 {% if has_github_token %}hidden{% endif %}">
+                            <label class="block text-[11px] font-semibold text-slate-700">Git Repository URL</label>
                             <div class="relative">
-                                <i class="mdi mdi-git absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                                <input type="text" name="repo_url" id="repoUrlInput" {% if not has_github_token %}required{% endif %} placeholder="git@github.com:user/repo.git or https://..." class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
+                                <i class="mdi mdi-git absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                <input type="text" name="repo_url" id="repoUrlInput" {% if not has_github_token %}required{% endif %} placeholder="git@github.com:user/repo.git or https://..." class="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
                             </div>
                         </div>
-
-                        <!-- Auto-configure checkbox -->
-                        {% if has_github_token %}
-                        <div id="autoConfigureContainer" class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-2.5">
-                            <input type="checkbox" name="auto_configure" id="autoConfigureCheckbox" checked class="w-4 h-4 text-brand rounded border-slate-300 focus:ring-brand">
-                            <label for="autoConfigureCheckbox" class="text-xs font-medium text-slate-700 cursor-pointer">
-                                Auto-configure Webhook &amp; Deploy Key on GitHub automatically
-                            </label>
-                        </div>
-                        {% endif %}
                     </div>
 
-                    <!-- Branch Input -->
-                    <div class="space-y-1.5">
-                        <label class="block text-xs font-semibold text-slate-700">Target Deploy Branch</label>
+                    <!-- Branch + Auto-configure -->
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-semibold text-slate-700">Target Deploy Branch</label>
                         <div class="relative">
-                            <i class="mdi mdi-source-branch absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                            <input type="text" name="branch" value="main" placeholder="main" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
+                            <i class="mdi mdi-source-branch absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" name="branch" value="main" placeholder="main" class="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
                         </div>
                     </div>
 
+                    {% if has_github_token %}
+                    <label id="autoConfigureContainer" for="autoConfigureCheckbox" class="flex items-center gap-2 text-[11px] font-medium text-slate-700 cursor-pointer">
+                        <input type="checkbox" name="auto_configure" id="autoConfigureCheckbox" checked class="w-3.5 h-3.5 text-brand rounded border-slate-300 focus:ring-brand">
+                        Auto-configure Webhook &amp; Deploy Key on GitHub
+                    </label>
+                    {% endif %}
                 </div>
 
                 <!-- Footer -->
-                <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
-                    <button type="button" onclick="closeModal('addConnectionModal')" class="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold transition-colors">Cancel</button>
-                    <button type="submit" id="btnConnectRepo" class="px-4 py-2 bg-brand hover:bg-brand/90 text-white rounded-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5">
+                <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeModal('addConnectionModal')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold transition-colors">Cancel</button>
+                    <button type="submit" id="btnConnectRepo" class="px-3.5 py-1.5 bg-brand hover:bg-brand/90 text-white rounded text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5">
                         <span>Connect Repository</span>
                     </button>
                 </div>
@@ -342,12 +337,14 @@
                     
                     <p class="text-xs text-slate-600">Update the deployment destination folder or target branch for <strong id="editModalDomainName" class="text-slate-900"></strong>.</p>
 
-                    <!-- Deployment Directory Path -->
+                    <!-- Deployment Directory (locked base + optional sub-folder) -->
                     <div class="space-y-1.5">
-                        <label class="block text-xs font-semibold text-slate-700">Deployment Directory Path</label>
-                        <div class="relative">
-                            <i class="mdi mdi-folder-outline absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                            <input type="text" name="deploy_path" id="editDeployPathInput" required placeholder="/home/username/public_html" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
+                        <label class="block text-xs font-semibold text-slate-700">Deployment Directory</label>
+                        <div class="flex items-stretch border border-slate-200 rounded-md overflow-hidden focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
+                            <span class="inline-flex items-center gap-1 px-2.5 bg-slate-100 border-r border-slate-200 text-[11px] font-mono text-slate-600 whitespace-nowrap max-w-[60%] truncate" title="Locked to the folder assigned to this domain">
+                                <i class="mdi mdi-lock-outline text-slate-400 text-xs"></i><span id="editDeployBaseText"></span>
+                            </span>
+                            <input type="text" name="deploy_subdir" id="editDeploySubdirInput" placeholder="optional/sub-folder" autocomplete="off" class="flex-1 min-w-0 px-2.5 py-2 bg-white text-xs font-mono text-slate-800 focus:outline-none border-0">
                         </div>
                         <span class="text-[11px] text-slate-400 block">Future git pushes and deployments will sync files into this directory.</span>
                     </div>
@@ -773,9 +770,11 @@ function selectCustomOption(val, text, path) {
     label.classList.remove('text-slate-500');
     label.classList.add('text-slate-900', 'font-semibold');
     
-    const pathInput = document.getElementById('deployPathInput');
-    if (pathInput) {
-        pathInput.value = path || '';
+    const baseText = document.getElementById('deployBaseText');
+    if (baseText) {
+        baseText.textContent = (path || '') + '/';
+        const baseLabel = document.getElementById('deployBaseLabel');
+        if (baseLabel) baseLabel.title = (path || '') + '/';
     }
     
     toggleCustomDropdown();
@@ -860,10 +859,10 @@ function submitCreateForm(event) {
         return;
     }
 
-    const deployPathInput = form.querySelector('#deployPathInput') || document.getElementById('deployPathInput');
-    const deployPath = deployPathInput ? deployPathInput.value.trim() : '';
-    if (!deployPath) {
-        showCreateFormError("Please specify a deployment directory path.", errorBanner);
+    const subdirInput = form.querySelector('#deploySubdirInput');
+    const subdir = subdirInput ? subdirInput.value.trim() : '';
+    if (subdir && (subdir.split('/').includes('..') || !/^[A-Za-z0-9._\-\/ ]+$/.test(subdir))) {
+        showCreateFormError("Sub-folder may only contain letters, numbers, dots, dashes, underscores and '/'.", errorBanner);
         return;
     }
     
@@ -919,6 +918,8 @@ function submitCreateForm(event) {
                 githubLabel.className = 'text-slate-500';
             }
             if (repoUrlInput) repoUrlInput.value = '';
+            const baseText = document.getElementById('deployBaseText');
+            if (baseText) baseText.textContent = 'Select a domain first';
             refreshDeploymentsTable();
         } else {
             showCreateFormError(data.message || "Failed to connect repository", errorBanner);
@@ -939,12 +940,13 @@ function submitCreateForm(event) {
 }
 
 // Edit Existing Connection Modal & Form
-function openEditModal(depId, domain, branch, deployPath) {
+function openEditModal(depId, domain, branch, basePath, subdir) {
     const domainLabel = document.getElementById('editModalDomainName');
     if (domainLabel) domainLabel.textContent = domain;
     document.getElementById('editDepId').value = depId;
     document.getElementById('editBranchInput').value = branch || 'main';
-    document.getElementById('editDeployPathInput').value = deployPath || '';
+    document.getElementById('editDeployBaseText').textContent = (basePath || '') + '/';
+    document.getElementById('editDeploySubdirInput').value = subdir || '';
     const errorBanner = document.getElementById('editFormError');
     if (errorBanner) {
         errorBanner.classList.add('hidden');
@@ -960,8 +962,8 @@ function submitEditForm(event) {
     const depId = depIdInput ? depIdInput.value : '';
     const branchInput = form.querySelector('#editBranchInput') || document.getElementById('editBranchInput');
     const branch = branchInput ? branchInput.value.trim() : 'main';
-    const deployPathInput = form.querySelector('#editDeployPathInput') || document.getElementById('editDeployPathInput');
-    const deployPath = deployPathInput ? deployPathInput.value.trim() : '';
+    const subdirInput = form.querySelector('#editDeploySubdirInput') || document.getElementById('editDeploySubdirInput');
+    const subdir = subdirInput ? subdirInput.value.trim() : '';
     const errorBanner = form.querySelector('#editFormError') || document.getElementById('editFormError');
     const submitBtn = form.querySelector('button[type="submit"]') || document.getElementById('btnSaveEdit');
 
@@ -970,9 +972,9 @@ function submitEditForm(event) {
         errorBanner.style.display = 'none';
     }
 
-    if (!deployPath) {
+    if (subdir && (subdir.split('/').includes('..') || !/^[A-Za-z0-9._\-\/ ]+$/.test(subdir))) {
         if (errorBanner) {
-            errorBanner.textContent = "Deployment directory path cannot be empty.";
+            errorBanner.textContent = "Sub-folder may only contain letters, numbers, dots, dashes, underscores and '/'.";
             errorBanner.classList.remove('hidden');
             errorBanner.style.display = 'block';
         }

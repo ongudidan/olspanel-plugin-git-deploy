@@ -130,6 +130,60 @@ def get_authenticated_user(request):
     ctx = get_git_deploy_context(request)
     return ctx['effective_user']
 
+
+def get_domain_base_path(domain):
+    """
+    Returns the locked base folder assigned to a domain, e.g.
+      /home/<owner>/public_html            (main domain)
+      /home/<owner>/sub.example.com        (subdomain)
+    If the domain document root was pointed deeper (e.g. /home/<owner>/public_html/public
+    for Laravel), the base is still the domain folder (/home/<owner>/public_html) so the
+    whole project can be deployed there.
+    """
+    doc_root = os.path.normpath(domain.path or '')
+    owner = None
+    try:
+        owner = domain.userid.username if getattr(domain, 'userid', None) else None
+    except Exception:
+        owner = None
+    if owner:
+        home = f"/home/{owner}"
+        if doc_root.startswith(home + os.sep):
+            parts = doc_root[len(home) + 1:].split(os.sep)
+            if parts and parts[0]:
+                return os.path.join(home, parts[0])
+    return doc_root
+
+
+def resolve_deploy_path(domain, subdir='', legacy_full_path=''):
+    """
+    Builds the final deploy path strictly inside the domain's base folder.
+    Returns (path, error). Users may only choose sub-folders; the base is non-negotiable.
+    """
+    base = get_domain_base_path(domain)
+    if not base or not base.startswith('/home/'):
+        return None, "This domain has no valid home directory assigned."
+
+    subdir = (subdir or '').strip().replace('\\', '/')
+    if not subdir and legacy_full_path:
+        legacy = os.path.normpath(legacy_full_path.strip())
+        if legacy == base:
+            subdir = ''
+        elif legacy.startswith(base + os.sep):
+            subdir = legacy[len(base) + 1:]
+        else:
+            return None, f"Deploy path must be inside {base}"
+
+    subdir = subdir.strip('/')
+    if not subdir:
+        return base, None
+    if not re.fullmatch(r'[A-Za-z0-9._\-/ ]+', subdir):
+        return None, "Folder name contains invalid characters."
+    final = os.path.normpath(os.path.join(base, subdir))
+    if final != base and not final.startswith(base + os.sep):
+        return None, f"Deploy path must stay inside {base}"
+    return final, None
+
 def get_request_protocol(request):
     """
     Reliably detects https vs http for OLSPanel.
@@ -358,24 +412,35 @@ def gui_view(request):
         domains = Domain.objects.all().order_by('domain')
     else:
         domains = Domain.objects.filter(userid=user.id).order_by('domain')
+    domains = list(domains)
+    for dom in domains:
+        dom.base_path = get_domain_base_path(dom)
         
     # Fetch existing deployments
     with connection.cursor() as cursor:
         if user.is_superuser or is_admin:
             cursor.execute("""
-                SELECT gd.id, d.domain, gd.repo_url, gd.branch, gd.deploy_path, gd.webhook_secret, gd.ssh_public_key, gd.auto_configured, gd.created_at
+                SELECT gd.id, d.domain, gd.domain_id, gd.repo_url, gd.branch, gd.deploy_path, gd.webhook_secret, gd.ssh_public_key, gd.auto_configured, gd.created_at
                 FROM git_deployments gd
                 JOIN domain d ON gd.domain_id = d.id
             """)
         else:
             cursor.execute("""
-                SELECT gd.id, d.domain, gd.repo_url, gd.branch, gd.deploy_path, gd.webhook_secret, gd.ssh_public_key, gd.auto_configured, gd.created_at
+                SELECT gd.id, d.domain, gd.domain_id, gd.repo_url, gd.branch, gd.deploy_path, gd.webhook_secret, gd.ssh_public_key, gd.auto_configured, gd.created_at
                 FROM git_deployments gd
                 JOIN domain d ON gd.domain_id = d.id
                 WHERE gd.userid_id = %s
             """, [user.id])
         columns = [col[0] for col in cursor.description]
         deployments = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    # Split each deployment path into locked base + editable sub-folder
+    for dep in deployments:
+        dom_obj = Domain.objects.filter(id=dep['domain_id']).first()
+        base = get_domain_base_path(dom_obj) if dom_obj else ''
+        path = os.path.normpath(dep['deploy_path'] or '')
+        dep['base_path'] = base
+        dep['deploy_subdir'] = path[len(base) + 1:] if base and path.startswith(base + os.sep) else ''
 
     # Fetch last status log for each deployment
     for dep in deployments:
@@ -472,8 +537,12 @@ def create_deployment_view(request):
     else:
         domain = get_object_or_404(Domain, id=domain_id, userid=user.id)
 
-    # Use user-specified deploy_path if provided, otherwise fallback to domain.path
-    final_deploy_path = os.path.normpath(deploy_path) if deploy_path else domain.path
+    # Deploy path is locked to the domain's assigned folder; users only pick a sub-folder
+    final_deploy_path, path_error = resolve_deploy_path(
+        domain, request.POST.get('deploy_subdir', ''), deploy_path
+    )
+    if path_error:
+        return JsonResponse({"status": "error", "message": path_error}, status=400)
 
     # Check for existing deployment on this domain
     with connection.cursor() as cursor:
@@ -781,21 +850,24 @@ def update_deployment_view(request, dep_id):
         
     branch = request.POST.get('branch', 'main').strip() or 'main'
     deploy_path = request.POST.get('deploy_path', '').strip()
-    
-    if not deploy_path:
-        return JsonResponse({"status": "error", "message": "Deploy directory path cannot be empty"}, status=400)
-        
-    clean_path = os.path.normpath(deploy_path)
-    
+    deploy_subdir = request.POST.get('deploy_subdir', '')
+
     with connection.cursor() as cursor:
         if user.is_superuser or is_admin:
-            cursor.execute("SELECT id FROM git_deployments WHERE id = %s", [dep_id])
+            cursor.execute("SELECT id, domain_id FROM git_deployments WHERE id = %s", [dep_id])
         else:
-            cursor.execute("SELECT id FROM git_deployments WHERE id = %s AND userid_id = %s", [dep_id, user.id])
-            
-        if not cursor.fetchone():
-            return JsonResponse({"status": "error", "message": "Deployment config not found or access denied"}, status=404)
-            
+            cursor.execute("SELECT id, domain_id FROM git_deployments WHERE id = %s AND userid_id = %s", [dep_id, user.id])
+        row = cursor.fetchone()
+
+    if not row:
+        return JsonResponse({"status": "error", "message": "Deployment config not found or access denied"}, status=404)
+
+    domain = get_object_or_404(Domain, id=row[1])
+    clean_path, path_error = resolve_deploy_path(domain, deploy_subdir, deploy_path)
+    if path_error:
+        return JsonResponse({"status": "error", "message": path_error}, status=400)
+
+    with connection.cursor() as cursor:
         cursor.execute("""
             UPDATE git_deployments
             SET branch = %s, deploy_path = %s
