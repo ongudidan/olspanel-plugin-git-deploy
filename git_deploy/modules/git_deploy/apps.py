@@ -67,6 +67,15 @@ class GitDeployConfig(AppConfig):
                     cursor.execute("ALTER TABLE git_deployments ADD COLUMN auto_configured TINYINT(1) NOT NULL DEFAULT 0")
                 except Exception:
                     pass  # Column already exists
+                # 6. GitHub App user tokens expire (8h): keep refresh token + expiry (migration)
+                for col_sql in (
+                    "ALTER TABLE git_user_tokens ADD COLUMN refresh_token TEXT NULL",
+                    "ALTER TABLE git_user_tokens ADD COLUMN expires_at DATETIME NULL",
+                ):
+                    try:
+                        cursor.execute(col_sql)
+                    except Exception:
+                        pass  # Column already exists
         except Exception as e:
             print(f"[GitDeploy] Database initialization warning: {e}")
 

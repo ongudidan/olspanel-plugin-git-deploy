@@ -131,6 +131,71 @@ def get_authenticated_user(request):
     return ctx['effective_user']
 
 
+GITHUB_RECONNECT_MSG = "Your GitHub connection has expired. Open 'Connect GitHub', click Disconnect, then Authorize GitHub Account again."
+
+
+def save_github_token(user_id, token_data):
+    """Stores access token plus (for GitHub App user tokens) the refresh token and expiry."""
+    from datetime import timedelta
+    access_token = token_data.get('access_token')
+    refresh_token = token_data.get('refresh_token')
+    expires_in = token_data.get('expires_in')
+    expires_at = datetime.now() + timedelta(seconds=int(expires_in) - 300) if expires_in else None
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT id FROM git_user_tokens WHERE userid_id = %s AND token_type = 'github'", [user_id])
+        if cursor.fetchone():
+            cursor.execute(
+                "UPDATE git_user_tokens SET token_value = %s, refresh_token = %s, expires_at = %s, created_at = %s WHERE userid_id = %s AND token_type = 'github'",
+                [access_token, refresh_token, expires_at, datetime.now(), user_id])
+        else:
+            cursor.execute(
+                "INSERT INTO git_user_tokens (userid_id, token_type, token_value, refresh_token, expires_at, created_at) VALUES (%s, 'github', %s, %s, %s, %s)",
+                [user_id, access_token, refresh_token, expires_at, datetime.now()])
+
+
+def refresh_github_token(user_id):
+    """Exchanges the stored refresh token for a new access token. Returns new token or None."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT refresh_token FROM git_user_tokens WHERE userid_id = %s AND token_type = 'github'", [user_id])
+        row = cursor.fetchone()
+        cursor.execute("SELECT setting_key, setting_value FROM git_settings WHERE setting_key IN ('github_client_id', 'github_client_secret')")
+        conf = dict(cursor.fetchall())
+    if not row or not row[0] or not conf.get('github_client_id') or not conf.get('github_client_secret'):
+        return None
+    try:
+        res = requests.post("https://github.com/login/oauth/access_token", json={
+            "client_id": conf['github_client_id'],
+            "client_secret": conf['github_client_secret'],
+            "grant_type": "refresh_token",
+            "refresh_token": row[0],
+        }, headers={"Accept": "application/json"}, timeout=15)
+        data = res.json() if res.status_code == 200 else {}
+    except Exception:
+        return None
+    if not data.get('access_token'):
+        return None
+    save_github_token(user_id, data)
+    return data['access_token']
+
+
+def get_valid_github_token(user_id, force_refresh=False):
+    """
+    Returns a usable GitHub token for the user, refreshing an expired GitHub App
+    user token (ghu_, 8h lifetime) automatically when a refresh token is stored.
+    Returns None if there is no token or it can no longer be refreshed.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT token_value, refresh_token, expires_at FROM git_user_tokens WHERE userid_id = %s AND token_type = 'github'", [user_id])
+        row = cursor.fetchone()
+    if not row:
+        return None
+    token, refresh_token, expires_at = row
+    if force_refresh or (expires_at and expires_at <= datetime.now()):
+        # Token known to be expired/rejected: refresh if possible, otherwise user must reconnect
+        return refresh_github_token(user_id) if refresh_token else None
+    return token
+
+
 def get_domain_base_path(domain):
     """
     Returns the locked base folder assigned to a domain, e.g.
@@ -585,7 +650,9 @@ def create_deployment_view(request):
         if not token_row:
             return JsonResponse({"status": "error", "message": "GitHub connection required for auto-configuration. Please connect first."}, status=400)
             
-        github_token = token_row[0]
+        github_token = get_valid_github_token(user.id)
+        if not github_token:
+            return JsonResponse({"status": "error", "message": GITHUB_RECONNECT_MSG}, status=400)
         owner, repo = parse_github_repo(repo_url)
         if not owner or not repo:
             return JsonResponse({"status": "error", "message": "Could not parse GitHub repository owner and name from the URL."}, status=400)
@@ -700,7 +767,7 @@ def manage_token_view(request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT id FROM git_user_tokens WHERE userid_id = %s AND token_type = 'github'", [user.id])
             if cursor.fetchone():
-                cursor.execute("UPDATE git_user_tokens SET token_value = %s, created_at = %s WHERE userid_id = %s AND token_type = 'github'", [token, datetime.now(), user.id])
+                cursor.execute("UPDATE git_user_tokens SET token_value = %s, refresh_token = NULL, expires_at = NULL, created_at = %s WHERE userid_id = %s AND token_type = 'github'", [token, datetime.now(), user.id])
             else:
                 cursor.execute("INSERT INTO git_user_tokens (userid_id, token_type, token_value, created_at) VALUES (%s, 'github', %s, %s)", [user.id, token, datetime.now()])
                 
@@ -720,7 +787,21 @@ def fetch_github_repos_view(request):
     if not row:
         return JsonResponse({"status": "error", "message": "No GitHub token found. Please connect your account first."}, status=404)
         
-    token = row[0]
+    token = get_valid_github_token(user.id)
+    if not token:
+        return JsonResponse({"status": "error", "message": GITHUB_RECONNECT_MSG}, status=401)
+
+    # Validate token; if GitHub rejects it, try one refresh before giving up
+    try:
+        check = requests.get("https://api.github.com/user", headers={
+            "Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}"}, timeout=15)
+        if check.status_code == 401:
+            token = get_valid_github_token(user.id, force_refresh=True)
+            if not token:
+                return JsonResponse({"status": "error", "message": GITHUB_RECONNECT_MSG}, status=401)
+    except Exception:
+        pass
+
     headers = {
         "Accept": "application/vnd.github+json",
         "Authorization": f"Bearer {token}",
@@ -1192,13 +1273,8 @@ def oauth_callback_view(request):
             error_msg = res_data.get('error_description', 'No access token returned from GitHub.')
             return HttpResponse(f"GitHub OAuth error: {error_msg}", status=400)
             
-        # Save token for user
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT id FROM git_user_tokens WHERE userid_id = %s AND token_type = 'github'", [user.id])
-            if cursor.fetchone():
-                cursor.execute("UPDATE git_user_tokens SET token_value = %s, created_at = %s WHERE userid_id = %s AND token_type = 'github'", [access_token, datetime.now(), user.id])
-            else:
-                cursor.execute("INSERT INTO git_user_tokens (userid_id, token_type, token_value, created_at) VALUES (%s, %s, %s, %s)", [user.id, 'github', access_token, datetime.now()])
+        # Save token for user (incl. refresh token + expiry for GitHub App user tokens)
+        save_github_token(user.id, res_data)
                 
         scope_suffix = f"?scope={ctx['scope']}&" if ctx.get('scope') else "?"
 
