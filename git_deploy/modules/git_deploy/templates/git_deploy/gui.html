@@ -746,12 +746,52 @@ function copyInputText(inputId, btn) {
 }
 
 // Domain Dropdown Handlers
+// Float a dropdown above the modal (position: fixed) so it is never clipped by the
+// modal's scroll area or covered by the fields below it. Opens upward if there is
+// not enough space below the trigger.
+function floatDropdown(dropdown, trigger) {
+    if (!dropdown || !trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const gap = 4;
+    const margin = 12;
+    const spaceBelow = window.innerHeight - rect.bottom - margin;
+    const spaceAbove = rect.top - margin;
+    const openUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+    const maxH = Math.max(160, Math.min(320, openUp ? spaceAbove : spaceBelow));
+
+    dropdown.style.position = 'fixed';
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.width = rect.width + 'px';
+    dropdown.style.right = 'auto';
+    dropdown.style.marginTop = '0';
+    dropdown.style.zIndex = '10000';
+    if (openUp) {
+        dropdown.style.top = 'auto';
+        dropdown.style.bottom = (window.innerHeight - rect.top + gap) + 'px';
+    } else {
+        dropdown.style.bottom = 'auto';
+        dropdown.style.top = (rect.bottom + gap) + 'px';
+    }
+    const list = dropdown.querySelector('[id$="OptionsList"]');
+    if (list) list.style.maxHeight = (maxH - 48) + 'px';
+}
+
+function refloatOpenDropdowns() {
+    [['githubSelectDropdown', 'githubSelectTrigger'], ['customSelectDropdown', 'customSelectTrigger']].forEach(([d, t]) => {
+        const dd = document.getElementById(d);
+        if (dd && !dd.classList.contains('hidden')) floatDropdown(dd, document.getElementById(t));
+    });
+}
+window.addEventListener('resize', refloatOpenDropdowns);
+document.addEventListener('scroll', refloatOpenDropdowns, true);
+
 function toggleCustomDropdown() {
     const dropdown = document.getElementById('customSelectDropdown');
     const arrow = document.getElementById('customSelectArrow');
     
     if (dropdown.classList.contains('hidden')) {
         dropdown.classList.remove('hidden');
+        floatDropdown(dropdown, document.getElementById('customSelectTrigger'));
         if (arrow) arrow.style.transform = 'rotate(180deg)';
         const searchInput = document.getElementById('customSelectSearch');
         if (searchInput) searchInput.focus();
@@ -1379,6 +1419,7 @@ function toggleGithubDropdown() {
     
     if (dropdown.classList.contains('hidden')) {
         dropdown.classList.remove('hidden');
+        floatDropdown(dropdown, document.getElementById('githubSelectTrigger'));
         if (arrow) arrow.style.transform = 'rotate(180deg)';
         const search = document.getElementById('githubSelectSearch');
         if (search) search.focus();
@@ -1587,6 +1628,7 @@ window.submitTokenForm = submitTokenForm;
 window.disconnectGithubApp = disconnectGithubApp;
 window.switchRepoTab = switchRepoTab;
 window.toggleGithubDropdown = toggleGithubDropdown;
+window.floatDropdown = floatDropdown;
 window.loadGithubRepos = loadGithubRepos;
 window.renderGithubOptions = renderGithubOptions;
 window.filterGithubOptions = filterGithubOptions;
