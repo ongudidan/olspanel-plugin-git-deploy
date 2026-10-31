@@ -140,19 +140,21 @@
                         </td>
 
                         <!-- Col 3: Actions (Matching Database List action styling) -->
-                        <td class="px-3 py-2 text-right space-x-1 whitespace-nowrap">
-                            <button type="button" onclick="triggerManualDeploy({{ dep.id }}, this)" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-white bg-brand hover:bg-brand/90 rounded shadow-2xs transition-colors cursor-pointer" title="Run manual deploy now">
+                        <td class="px-3 py-2 text-right whitespace-nowrap align-middle">
+                            <div class="inline-flex items-center justify-end gap-1.5">
+                            <button type="button" onclick="triggerManualDeploy({{ dep.id }}, this)" class="inline-flex items-center justify-center gap-1 h-6 px-2 text-[11px] leading-none font-semibold align-middle text-white bg-brand hover:bg-brand/90 rounded border border-brand shadow-2xs transition-colors cursor-pointer" title="Run manual deploy now">
                                 <i class="mdi mdi-play text-xs"></i>
                                 <span>Deploy</span>
                             </button>
-                            <button type="button" onclick="openLogsModal({{ dep.id }})" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded border border-slate-200 transition-colors cursor-pointer" title="View deployment history and logs">
+                            <button type="button" onclick="openLogsModal({{ dep.id }})" class="inline-flex items-center justify-center gap-1 h-6 px-2 text-[11px] leading-none font-semibold align-middle text-slate-700 bg-slate-100 hover:bg-slate-200 rounded border border-slate-200 transition-colors cursor-pointer" title="View deployment history and logs">
                                 <i class="mdi mdi-text-box-outline text-xs"></i>
                                 <span>Logs</span>
                             </button>
-                            <button type="button" onclick="confirmDelete({{ dep.id }})" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded border border-rose-200 transition-colors cursor-pointer" title="Delete connection link">
+                            <button type="button" onclick="confirmDelete({{ dep.id }})" class="inline-flex items-center justify-center gap-1 h-6 px-2 text-[11px] leading-none font-semibold align-middle text-rose-600 bg-rose-50 hover:bg-rose-100 rounded border border-rose-200 transition-colors cursor-pointer" title="Delete connection link">
                                 <i class="mdi mdi-delete-outline text-xs"></i>
                                 <span>Delete</span>
                             </button>
+                            </div>
                         </td>
 
                     </tr>
