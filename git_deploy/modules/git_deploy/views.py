@@ -1279,17 +1279,35 @@ def oauth_callback_view(request):
         scope_suffix = f"?scope={ctx['scope']}&" if ctx.get('scope') else "?"
 
         # GitHub App user tokens (ghu_) can only see private repos where the App is INSTALLED.
-        # The OAuth authorize screen never shows the repository picker, so ALWAYS send the user
-        # to the App's install page (same page used right after creating the App), where they
-        # choose "All repositories" or "Only select repositories" - on first connect and on
-        # every reconnect. The token is already saved above.
+        # The OAuth authorize screen never shows the repository picker, so if the App is NOT yet
+        # installed on this user's GitHub account, send them to the App's install page where they
+        # choose "All repositories" or "Only select repositories". If it is already installed,
+        # go straight back to the panel; users can change their selection any time via the
+        # "Manage Repository Access" button. The token is already saved above.
         if access_token.startswith('ghu_'):
             with connection.cursor() as cursor:
                 cursor.execute("SELECT setting_value FROM git_settings WHERE setting_key = 'github_app_slug'")
                 slug_row = cursor.fetchone()
             app_slug = slug_row[0] if slug_row and slug_row[0] else ''
             if app_slug:
-                return redirect(f"https://github.com/apps/{app_slug}/installations/new")
+                installations = None
+                try:
+                    inst_res = requests.get(
+                        "https://api.github.com/user/installations?per_page=100",
+                        headers={
+                            "Accept": "application/vnd.github+json",
+                            "Authorization": f"Bearer {access_token}",
+                            "X-GitHub-Api-Version": "2022-11-28",
+                        },
+                        timeout=15,
+                    )
+                    if inst_res.status_code == 200:
+                        installations = inst_res.json().get("installations", [])
+                except Exception:
+                    installations = None
+                # Only redirect when we positively know there is no installation
+                if installations is not None and len(installations) == 0:
+                    return redirect(f"https://github.com/apps/{app_slug}/installations/new")
 
         return redirect(f'/module/git_deploy/gui/{scope_suffix}github_oauth=success')
     except Exception as e:
