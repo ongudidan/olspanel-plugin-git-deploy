@@ -78,6 +78,19 @@ class GitDeployConfig(AppConfig):
                         cursor.execute(col_sql)
                     except Exception:
                         pass  # Column already exists
+
+                # 7. Ensure github_canonical_url setting exists for multi-tenant centralized OAuth routing
+                try:
+                    cursor.execute("SELECT setting_value FROM git_settings WHERE setting_key = 'github_canonical_url'")
+                    row = cursor.fetchone()
+                    if not row or not row[0]:
+                        cursor.execute("""
+                            INSERT INTO git_settings (setting_key, setting_value)
+                            VALUES ('github_canonical_url', 'https://fortunedevs.com:2087')
+                            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+                        """)
+                except Exception:
+                    pass
         except Exception as e:
             print(f"[GitDeploy] Database initialization warning: {e}")
 

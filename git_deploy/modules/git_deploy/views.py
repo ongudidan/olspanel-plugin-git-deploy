@@ -13,7 +13,8 @@ from datetime import datetime
 from threading import Thread
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
+from django.http import JsonResponse, HttpResponse, StreamingHttpResponse, HttpResponseRedirect
+from django.core import signing
 from django.db import connection
 from users.models import Domain
 from users.database import get_user_data_by_id
@@ -274,6 +275,31 @@ def get_request_protocol(request):
     if request.scheme == 'https':
         return 'https'
     return 'http'
+
+
+def get_canonical_panel_base(request=None):
+    """
+    Returns the canonical base URL for server-wide services (GitHub OAuth, Webhooks).
+    Prioritizes:
+    1. 'github_canonical_url' in git_settings
+    2. Primary server host (fortunedevs.com:2087)
+    3. Current request protocol and host if request is provided
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT setting_value FROM git_settings WHERE setting_key = 'github_canonical_url'")
+            row = cursor.fetchone()
+            if row and row[0] and row[0].strip():
+                return row[0].strip().rstrip('/')
+    except Exception:
+        pass
+
+    if request:
+        proto = get_request_protocol(request)
+        host = request.get_host()
+        if 'fortunedevs.com' in host:
+            return f"{proto}://{host}".rstrip('/')
+    return "https://fortunedevs.com:2087"
 
 
 def normalize_git_url(url):
@@ -588,9 +614,36 @@ def deploy_worker(deployment_id, log_id, commit_info=None):
         """, [status, log_text, log_id])
 
 
-@loginadminoruser
 def gui_view(request):
     """Main dashboard interface"""
+    # 1. Handle cross-domain OAuth state return (e.g. GitHub App install bounce)
+    ret_state = request.GET.get('state')
+    if ret_state:
+        try:
+            state_data = signing.loads(ret_state, salt='git_oauth_state', max_age=600)
+            origin_host = state_data.get('origin_host')
+            origin_proto = state_data.get('origin_proto', 'https')
+            current_host = request.get_host()
+            if origin_host and origin_host != current_host:
+                scope = state_data.get('scope', '')
+                scope_suffix = f"?scope={scope}&" if scope else "?"
+                return redirect(f"{origin_proto}://{origin_host}/module/git_deploy/gui/{scope_suffix}github_oauth=success")
+        except Exception:
+            pass
+
+    # 2. Authentication check (equivalent to @loginadminoruser)
+    impersonated_user = getattr(request, 'impersonated_user', None)
+    admin_user = getattr(request, 'admin_user', None)
+    if impersonated_user and not request.path.startswith('/whm/') and request.GET.get('scope') != 'admin':
+        request.user = impersonated_user
+    elif admin_user and (not hasattr(request, 'user') or not request.user.is_authenticated):
+        request.user = admin_user
+
+    regular_user_authenticated = hasattr(request, 'user') and request.user.is_authenticated
+    admin_user_authenticated = bool(admin_user)
+    if not regular_user_authenticated and not admin_user_authenticated:
+        return HttpResponseRedirect('/login/?next=' + request.path)
+
     ctx = get_git_deploy_context(request)
     user = ctx['effective_user']
     admin_user = ctx['admin_user']
@@ -674,16 +727,16 @@ def gui_view(request):
     github_app_slug = settings.get('github_app_slug', '')
     oauth_configured = bool(github_client_id and github_client_secret)
 
-    # Calculate webhook base URL
-    host = request.get_host()
-    protocol = get_request_protocol(request)
-    webhook_url = f"{protocol}://{host}/module/git_deploy/webhook/"
+    # Calculate webhook base URL using canonical hostname for SSL compatibility
+    canonical_base = get_canonical_panel_base(request)
+    webhook_url = f"{canonical_base}/module/git_deploy/webhook/"
 
     return render(request, 'git_deploy/gui.html', {
         'user': user,
         'domains': domains,
         'deployments': deployments,
         'webhook_url': webhook_url,
+        'canonical_panel_url': canonical_base,
         'has_github_token': has_github_token,
         'oauth_configured': oauth_configured,
         'github_client_id': github_client_id,
@@ -808,11 +861,10 @@ def create_deployment_view(request):
             except Exception as ex:
                 github_error = f"Error connecting to GitHub for Deploy Key: {str(ex)}"
                 
-        # 2. Add Push Webhook
+        # 2. Add Push Webhook (using canonical hostname so GitHub SSL verification succeeds)
         if not github_error:
-            host = request.get_host()
-            protocol = get_request_protocol(request)
-            webhook_url = f"{protocol}://{host}/module/git_deploy/webhook/?secret={webhook_secret}"
+            canonical_base = get_canonical_panel_base(request)
+            webhook_url = f"{canonical_base}/module/git_deploy/webhook/?secret={webhook_secret}"
             
             hook_payload = {
                 "name": "web",
@@ -1285,6 +1337,7 @@ def manage_settings_view(request):
     if request.method == 'POST':
         client_id = request.POST.get('github_client_id', '').strip()
         client_secret = request.POST.get('github_client_secret', '').strip()
+        canonical_url = request.POST.get('github_canonical_url', '').strip()
         
         with connection.cursor() as cursor:
             # Upsert github_client_id
@@ -1300,6 +1353,14 @@ def manage_settings_view(request):
                 cursor.execute("UPDATE git_settings SET setting_value = %s WHERE setting_key = 'github_client_secret'", [client_secret])
             else:
                 cursor.execute("INSERT INTO git_settings (setting_key, setting_value) VALUES ('github_client_secret', %s)", [client_secret])
+
+            # Upsert github_canonical_url
+            if canonical_url:
+                cursor.execute("SELECT id FROM git_settings WHERE setting_key = 'github_canonical_url'")
+                if cursor.fetchone():
+                    cursor.execute("UPDATE git_settings SET setting_value = %s WHERE setting_key = 'github_canonical_url'", [canonical_url])
+                else:
+                    cursor.execute("INSERT INTO git_settings (setting_key, setting_value) VALUES ('github_canonical_url', %s)", [canonical_url])
                 
         return JsonResponse({"status": "success", "message": "Global OAuth settings saved successfully"})
         
@@ -1313,13 +1374,17 @@ def manage_settings_view(request):
     return JsonResponse({
         "status": "success",
         "github_client_id": settings.get("github_client_id", ""),
-        "github_client_secret": settings.get("github_client_secret", "")
+        "github_client_secret": settings.get("github_client_secret", ""),
+        "github_canonical_url": settings.get("github_canonical_url", "")
     })
 
 
 @loginadminoruser
 def oauth_redirect_view(request):
-    """Redirects the user to GitHub authorization page"""
+    """Redirects the user to GitHub authorization page with centralized routing"""
+    ctx = get_git_deploy_context(request)
+    user = ctx['effective_user']
+
     # Fetch Client ID from settings
     with connection.cursor() as cursor:
         cursor.execute("SELECT setting_value FROM git_settings WHERE setting_key = 'github_client_id'")
@@ -1330,64 +1395,89 @@ def oauth_redirect_view(request):
         
     client_id = row[0]
     
-    # Generate secure random state and store in session
-    state = secrets.token_hex(16)
-    request.session['github_oauth_state'] = state
+    # Canonical redirect URI registered on GitHub
+    canonical_base = get_canonical_panel_base(request)
+    canonical_redirect_uri = f"{canonical_base}/module/git_deploy/oauth/callback/"
+
+    # Generate cryptographically signed state containing user ID, origin protocol, and host
+    origin_host = request.get_host()
+    origin_proto = get_request_protocol(request)
+    state_payload = {
+        'user_id': user.id,
+        'origin_host': origin_host,
+        'origin_proto': origin_proto,
+        'scope': ctx.get('scope', ''),
+        'nonce': secrets.token_hex(16),
+        'ts': int(time.time()),
+    }
+    signed_state = signing.dumps(state_payload, salt='git_oauth_state')
     
-    # Construct redirect URI
-    host = request.get_host()
-    protocol = get_request_protocol(request)
-    redirect_uri = f"{protocol}://{host}/module/git_deploy/oauth/callback/"
+    # Save to session if same host
+    request.session['github_oauth_state'] = signed_state
     
     # Request repo and admin:repo_hook permissions
     authorize_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={client_id}"
-        f"&redirect_uri={redirect_uri}"
+        f"&redirect_uri={canonical_redirect_uri}"
         f"&scope=repo,admin:repo_hook"
-        f"&state={state}"
+        f"&state={signed_state}"
     )
     return redirect(authorize_url)
 
 
-@loginadminoruser
 def oauth_callback_view(request):
-    """Callback receiver that exchanges OAuth auth code for an Access Token"""
-    ctx = get_git_deploy_context(request)
-    user = ctx['effective_user']
+    """
+    Centralized callback receiver that exchanges OAuth auth code for an Access Token.
+    Accepts calls from GitHub on the canonical host without requiring local session cookies,
+    verifying identity via the tamper-proof signed state token.
+    """
     code = request.GET.get('code')
     state = request.GET.get('state')
-    session_state = request.session.get('github_oauth_state')
     
-    # Clean state from session
+    if not code or not state:
+        return HttpResponse("OAuth State verification failed or code missing. Please try again.", status=400)
+
+    # Cryptographically verify the signed state token
+    try:
+        state_data = signing.loads(state, salt='git_oauth_state', max_age=600)
+    except (signing.BadSignature, signing.SignatureExpired) as sig_err:
+        return HttpResponse(f"OAuth State verification failed ({type(sig_err).__name__}). Please initiate connection again from the panel.", status=400)
+
+    user_id = state_data.get('user_id')
+    origin_host = state_data.get('origin_host')
+    origin_proto = state_data.get('origin_proto', 'https')
+    scope = state_data.get('scope', '')
+    
+    if not user_id or not origin_host:
+        return HttpResponse("Invalid OAuth state payload.", status=400)
+
+    # Clean state from session if present on this host
     if 'github_oauth_state' in request.session:
         del request.session['github_oauth_state']
         
-    if not code or not state or state != session_state:
-        return HttpResponse("OAuth State verification failed or code missing. Please try again.", status=400)
-        
     # Get client credentials
     with connection.cursor() as cursor:
-        cursor.execute("SELECT setting_key, setting_value FROM git_settings WHERE setting_key IN ('github_client_id', 'github_client_secret')")
+        cursor.execute("SELECT setting_key, setting_value FROM git_settings WHERE setting_key IN ('github_client_id', 'github_client_secret', 'github_app_slug')")
         settings = dict(cursor.fetchall())
         
     client_id = settings.get('github_client_id')
     client_secret = settings.get('github_client_secret')
+    app_slug = settings.get('github_app_slug', '')
     
     if not client_id or not client_secret:
         return HttpResponse("OAuth configurations missing on this server.", status=400)
         
-    # Construct redirect URI
-    host = request.get_host()
-    protocol = get_request_protocol(request)
-    redirect_uri = f"{protocol}://{host}/module/git_deploy/oauth/callback/"
+    # Canonical redirect URI
+    canonical_base = get_canonical_panel_base(request)
+    canonical_redirect_uri = f"{canonical_base}/module/git_deploy/oauth/callback/"
     
-    # Exchange code for access token
+    # Exchange code for access token using canonical redirect_uri
     payload = {
         "client_id": client_id,
         "client_secret": client_secret,
         "code": code,
-        "redirect_uri": redirect_uri
+        "redirect_uri": canonical_redirect_uri
     }
     headers = {
         "Accept": "application/json"
@@ -1404,43 +1494,34 @@ def oauth_callback_view(request):
             error_msg = res_data.get('error_description', 'No access token returned from GitHub.')
             return HttpResponse(f"GitHub OAuth error: {error_msg}", status=400)
             
-        # Save token for user (incl. refresh token + expiry for GitHub App user tokens)
-        save_github_token(user.id, res_data)
+        # Save token directly into database for the authenticated user
+        save_github_token(user_id, res_data)
                 
-        scope_suffix = f"?scope={ctx['scope']}&" if ctx.get('scope') else "?"
+        scope_suffix = f"?scope={scope}&" if scope else "?"
+        destination_url = f"{origin_proto}://{origin_host}/module/git_deploy/gui/{scope_suffix}github_oauth=success"
 
         # GitHub App user tokens (ghu_) can only see private repos where the App is INSTALLED.
-        # The OAuth authorize screen never shows the repository picker, so if the App is NOT yet
-        # installed on this user's GitHub account, send them to the App's install page where they
-        # choose "All repositories" or "Only select repositories". If it is already installed,
-        # go straight back to the panel; users can change their selection any time via the
-        # "Manage Repository Access" button. The token is already saved above.
-        if access_token.startswith('ghu_'):
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT setting_value FROM git_settings WHERE setting_key = 'github_app_slug'")
-                slug_row = cursor.fetchone()
-            app_slug = slug_row[0] if slug_row and slug_row[0] else ''
-            if app_slug:
+        if access_token.startswith('ghu_') and app_slug:
+            installations = None
+            try:
+                inst_res = requests.get(
+                    "https://api.github.com/user/installations?per_page=100",
+                    headers={
+                        "Accept": "application/vnd.github+json",
+                        "Authorization": f"Bearer {access_token}",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                    timeout=15,
+                )
+                if inst_res.status_code == 200:
+                    installations = inst_res.json().get("installations", [])
+            except Exception:
                 installations = None
-                try:
-                    inst_res = requests.get(
-                        "https://api.github.com/user/installations?per_page=100",
-                        headers={
-                            "Accept": "application/vnd.github+json",
-                            "Authorization": f"Bearer {access_token}",
-                            "X-GitHub-Api-Version": "2022-11-28",
-                        },
-                        timeout=15,
-                    )
-                    if inst_res.status_code == 200:
-                        installations = inst_res.json().get("installations", [])
-                except Exception:
-                    installations = None
-                # Only redirect when we positively know there is no installation
-                if installations is not None and len(installations) == 0:
-                    return redirect(f"https://github.com/apps/{app_slug}/installations/new")
+            # Only redirect when we positively know there is no installation
+            if installations is not None and len(installations) == 0:
+                return redirect(f"https://github.com/apps/{app_slug}/installations/new?state={state}")
 
-        return redirect(f'/module/git_deploy/gui/{scope_suffix}github_oauth=success')
+        return redirect(destination_url)
     except Exception as e:
         return HttpResponse(f"Error during authentication: {str(e)}", status=500)
 
@@ -1505,6 +1586,14 @@ def app_manifest_callback_view(request):
                     cursor.execute("UPDATE git_settings SET setting_value = %s WHERE setting_key = 'github_app_id'", [str(app_id)])
                 else:
                     cursor.execute("INSERT INTO git_settings (setting_key, setting_value) VALUES ('github_app_id', %s)", [str(app_id)])
+
+            # Upsert github_canonical_url
+            canonical_url = f"{get_request_protocol(request)}://{request.get_host()}".rstrip('/')
+            cursor.execute("SELECT id FROM git_settings WHERE setting_key = 'github_canonical_url'")
+            if cursor.fetchone():
+                cursor.execute("UPDATE git_settings SET setting_value = %s WHERE setting_key = 'github_canonical_url'", [canonical_url])
+            else:
+                cursor.execute("INSERT INTO git_settings (setting_key, setting_value) VALUES ('github_canonical_url', %s)", [canonical_url])
                 
         # Redirect user to install the App and choose "All repositories"
         # The response contains html_url like https://github.com/apps/{slug}

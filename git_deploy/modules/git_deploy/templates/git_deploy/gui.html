@@ -497,6 +497,14 @@
                     <i class="mdi mdi-check-circle text-emerald-600 text-base"></i>
                     <strong>System GitHub App is configured &amp; active.</strong>
                 </div>
+
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">
+                    <div class="flex items-center justify-between flex-wrap gap-1">
+                        <span class="font-semibold text-slate-700">Centralized OAuth Callback Host:</span>
+                        <code class="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono text-[11px] text-brand">{{ canonical_panel_url }}</code>
+                    </div>
+                    <p class="text-[11px] text-slate-500 m-0">All client domains on this server route GitHub OAuth through this canonical hostname so users can connect their GitHub accounts from any domain without redirect URL errors.</p>
+                </div>
                 
                 <button type="button" onclick="disconnectGithubApp()" class="w-full px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-xs font-semibold transition-colors">
                     Disconnect GitHub App
