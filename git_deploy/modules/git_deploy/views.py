@@ -438,8 +438,47 @@ def deploy_worker(deployment_id, log_id, commit_info=None):
             else:
                 log("Submodules updated successfully.")
 
-        # Skip composer, npm, and artisan steps since all required files are already present in the repository.
-        pass
+        # Auto-reload Node.js / PM2 applications if registered on this deployment path
+        if status == 'success':
+            try:
+                from users.models import Apps
+                node_app = Apps.objects.filter(domain_id=domain_id, path=deploy_path, type='node_js').first()
+                if not node_app:
+                    node_app = Apps.objects.filter(path=deploy_path, type='node_js').first()
+
+                if node_app:
+                    app_name = node_app.name or f"node-app-{node_app.id}"
+                    log(f"Detected Node.js application '{app_name}' registered at this deploy path.")
+
+                    # Run npm install if package.json exists
+                    if os.path.exists(os.path.join(deploy_path, 'package.json')):
+                        log("Running: npm install (--omit=dev)...")
+                        code = run_cmd_as_user_stream(username, ['npm', 'install', '--omit=dev'], deploy_path, lambda msg: log(msg, with_timestamp=False), env_vars)
+                        if code == 0:
+                            log("SUCCESS: Dependencies installed.")
+                        else:
+                            log(f"WARNING: npm install finished with code {code}.")
+
+                    # Trigger PM2 zero-downtime reload
+                    from users.function import restart_node_app_under_pm2
+                    log(f"Triggering PM2 zero-downtime reload for '{app_name}'...")
+                    restart_res = restart_node_app_under_pm2(
+                        username=username,
+                        app_name=app_name,
+                        app_path=deploy_path,
+                        startup_file=node_app.startup_file,
+                        node_version=node_app.version,
+                        port=node_app.port,
+                        env_str=node_app.env_variables,
+                        app_mode=node_app.app_mode,
+                        max_memory=node_app.max_memory
+                    )
+                    if restart_res.get('status') == 'success':
+                        log(f"SUCCESS: Node.js application '{app_name}' reloaded successfully via PM2.")
+                    else:
+                        log(f"NOTICE: PM2 reload completed: {restart_res.get('message', 'done')}")
+            except Exception as node_err:
+                log(f"Node.js post-deploy hook notice: {str(node_err)}")
 
     except Exception as ex:
         status = 'failed'
