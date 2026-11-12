@@ -133,7 +133,7 @@
                         <td class="px-3 py-2">
                             <div class="inline-flex items-center gap-1.5 max-w-full">
                                 <code class="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-[11px] font-mono text-slate-700 truncate max-w-xs" title="{{ dep.deploy_path }}">{{ dep.deploy_path }}</code>
-                                <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.base_path|escapejs }}', '{{ dep.deploy_subdir|escapejs }}')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer" title="Edit deploy path">
+                                <button type="button" onclick="openEditModal({{ dep.id }}, '{{ dep.domain|escapejs }}', '{{ dep.branch|escapejs }}', '{{ dep.base_path|escapejs }}', '{{ dep.deploy_subdir|escapejs }}', '{{ dep.post_deploy_script|default:''|escapejs }}')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer" title="Edit settings and commands">
                                     <i class="mdi mdi-pencil text-xs"></i>
                                 </button>
                             </div>
@@ -303,6 +303,26 @@
                         Auto-configure Webhook &amp; Deploy Key on GitHub
                     </label>
                     {% endif %}
+
+                    <!-- Post-Deployment Commands (Optional) -->
+                    <div class="space-y-1.5 pt-2 border-t border-slate-100">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
+                                <i class="mdi mdi-console text-brand text-xs"></i> Post-Deployment Commands (Optional)
+                            </label>
+                            <span class="text-[10px] text-slate-400">Runs strictly inside working folder</span>
+                        </div>
+                        <textarea name="post_deploy_script" id="addPostDeployScript" rows="3" placeholder="# Custom commands executed after codebase is pulled&#10;npm install --omit=dev&#10;npm run build" class="w-full px-2.5 py-1.5 bg-slate-900 text-slate-100 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand border border-slate-800 resize-y placeholder-slate-500"></textarea>
+                        
+                        <!-- Quick Presets -->
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[10px] text-slate-400 font-medium">Quick Presets:</span>
+                            <button type="button" onclick="appendPresetCommand('addPostDeployScript', 'npm install --omit=dev')" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition-colors">+ npm install</button>
+                            <button type="button" onclick="appendPresetCommand('addPostDeployScript', 'npm run build')" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition-colors">+ npm build</button>
+                            <button type="button" onclick="appendPresetCommand('addPostDeployScript', 'pm2 reload all')" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition-colors">+ pm2 reload</button>
+                            <button type="button" onclick="appendPresetCommand('addPostDeployScript', 'composer install --no-dev')" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition-colors">+ composer</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Footer -->
@@ -357,6 +377,26 @@
                         <div class="relative">
                             <i class="mdi mdi-source-branch absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                             <input type="text" name="branch" id="editBranchInput" required placeholder="main" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-800 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand">
+                        </div>
+                    </div>
+
+                    <!-- Post-Deployment Commands (Optional) -->
+                    <div class="space-y-1.5 pt-2 border-t border-slate-100">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                <i class="mdi mdi-console text-brand text-xs"></i> Post-Deployment Commands (Optional)
+                            </label>
+                            <span class="text-[10px] text-slate-400">Runs strictly inside working folder</span>
+                        </div>
+                        <textarea name="post_deploy_script" id="editPostDeployScript" rows="3" placeholder="# Commands executed after codebase is loaded&#10;npm install --omit=dev&#10;npm run build" class="w-full px-2.5 py-2 bg-slate-900 text-slate-100 rounded-md text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand border border-slate-800 resize-y placeholder-slate-500"></textarea>
+                        
+                        <!-- Quick Presets -->
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[10px] text-slate-400 font-medium">Quick Presets:</span>
+                            <button type="button" onclick="appendPresetCommand('editPostDeployScript', 'npm install --omit=dev')" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition-colors">+ npm install</button>
+                            <button type="button" onclick="appendPresetCommand('editPostDeployScript', 'npm run build')" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition-colors">+ npm build</button>
+                            <button type="button" onclick="appendPresetCommand('editPostDeployScript', 'pm2 reload all')" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition-colors">+ pm2 reload</button>
+                            <button type="button" onclick="appendPresetCommand('editPostDeployScript', 'composer install --no-dev')" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition-colors">+ composer</button>
                         </div>
                     </div>
 
@@ -981,14 +1021,28 @@ function submitCreateForm(event) {
     });
 }
 
+function appendPresetCommand(textareaId, cmd) {
+    const el = document.getElementById(textareaId);
+    if (!el) return;
+    const current = el.value.trim();
+    if (!current) {
+        el.value = cmd;
+    } else {
+        el.value = current + '\n' + cmd;
+    }
+    el.focus();
+}
+
 // Edit Existing Connection Modal & Form
-function openEditModal(depId, domain, branch, basePath, subdir) {
+function openEditModal(depId, domain, branch, basePath, subdir, postDeployScript) {
     const domainLabel = document.getElementById('editModalDomainName');
     if (domainLabel) domainLabel.textContent = domain;
     document.getElementById('editDepId').value = depId;
     document.getElementById('editBranchInput').value = branch || 'main';
     document.getElementById('editDeployBaseText').textContent = (basePath || '') + '/';
     document.getElementById('editDeploySubdirInput').value = subdir || '';
+    const scriptEl = document.getElementById('editPostDeployScript');
+    if (scriptEl) scriptEl.value = postDeployScript || '';
     const errorBanner = document.getElementById('editFormError');
     if (errorBanner) {
         errorBanner.classList.add('hidden');
@@ -1617,6 +1671,7 @@ window.filterCustomOptions = filterCustomOptions;
 window.showCreateFormError = showCreateFormError;
 window.submitCreateForm = submitCreateForm;
 window.openEditModal = openEditModal;
+window.appendPresetCommand = appendPresetCommand;
 window.submitEditForm = submitEditForm;
 window.triggerManualDeploy = triggerManualDeploy;
 window.confirmDelete = confirmDelete;

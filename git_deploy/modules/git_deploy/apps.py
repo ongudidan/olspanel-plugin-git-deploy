@@ -21,6 +21,7 @@ class GitDeployConfig(AppConfig):
                         webhook_secret VARCHAR(100) NOT NULL,
                         ssh_key TEXT NULL,
                         ssh_public_key TEXT NULL,
+                        post_deploy_script TEXT NULL,
                         is_active TINYINT(1) NOT NULL DEFAULT 1,
                         created_at DATETIME NOT NULL,
                         FOREIGN KEY (userid_id) REFERENCES auth_user(id) ON DELETE CASCADE
@@ -71,6 +72,7 @@ class GitDeployConfig(AppConfig):
                 for col_sql in (
                     "ALTER TABLE git_user_tokens ADD COLUMN refresh_token TEXT NULL",
                     "ALTER TABLE git_user_tokens ADD COLUMN expires_at DATETIME NULL",
+                    "ALTER TABLE git_deployments ADD COLUMN post_deploy_script TEXT NULL",
                 ):
                     try:
                         cursor.execute(col_sql)

@@ -312,6 +312,85 @@ def run_cmd_as_user_stream(username, cmd, cwd, log_func, env_vars=None):
     return_code = process.wait()
     return return_code
 
+
+def run_contained_post_deploy_script(username, deploy_path, script_content, log_func, env_vars=None):
+    """
+    Executes custom post-deployment commands strictly confined within deploy_path.
+    1. Executes under the unprivileged Linux username.
+    2. Enforces cwd = deploy_path.
+    3. Traps / overrides cd to prevent escaping outside deploy_path.
+    4. Injects Node, PM2, Composer, PHP paths into PATH.
+    5. Streams stdout and stderr line-by-line.
+    6. Stops on first failure (set -eo pipefail).
+    """
+    if not script_content or not script_content.strip():
+        return 0
+
+    clean_deploy_path = os.path.normpath(deploy_path)
+
+    # Resolve active Node binary directory if present
+    node_bin_dirs = []
+    nodejs_base = '/usr/local/olspanel/bin/nodejs'
+    if os.path.exists(nodejs_base):
+        try:
+            for v in sorted(os.listdir(nodejs_base), reverse=True):
+                cand = os.path.join(nodejs_base, v, 'bin')
+                if os.path.isdir(cand):
+                    node_bin_dirs.append(cand)
+        except Exception:
+            pass
+
+    path_additions = ":".join(node_bin_dirs + ['/usr/local/bin', '/usr/bin', '/bin'])
+
+    # Build the self-contained runner script
+    runner_script = f"""#!/bin/bash
+set -eo pipefail
+
+export DEPLOY_ROOT="{clean_deploy_path}"
+export HOME="/home/{username}"
+export PATH="{path_additions}:$PATH"
+export NODE_ENV="production"
+
+cd "$DEPLOY_ROOT" || exit 1
+
+# Override cd function to strictly contain execution within DEPLOY_ROOT
+cd() {{
+    builtin cd "$@" || return 1
+    case "$PWD" in
+        "$DEPLOY_ROOT"* ) ;;
+        * )
+            echo "ERROR: Navigation outside deployment root ($DEPLOY_ROOT) is restricted!" >&2
+            builtin cd "$DEPLOY_ROOT"
+            return 1
+            ;;
+    esac
+}}
+
+# User-defined commands follow:
+{script_content.strip()}
+"""
+
+    # Write temporary runner script owned and executable by the user
+    with tempfile.NamedTemporaryFile('w', delete=False, prefix='post_deploy_', suffix='.sh') as tf:
+        tf.write(runner_script)
+        script_path = tf.name
+
+    try:
+        # Give user read + execute permission
+        subprocess.run(['sudo', 'chown', f"{username}:{username}", script_path], check=False)
+        os.chmod(script_path, 0o750)
+
+        # Run via run_cmd_as_user_stream
+        cmd = ['bash', script_path]
+        return run_cmd_as_user_stream(username, cmd, clean_deploy_path, log_func, env_vars)
+    finally:
+        if os.path.exists(script_path):
+            try:
+                os.remove(script_path)
+            except Exception:
+                pass
+
+
 def create_pending_log(dep_id, commit_info=None):
     commit_hash = commit_info.get('hash') if commit_info else None
     commit_msg = commit_info.get('message') if commit_info else 'Manual Deployment'
@@ -330,7 +409,7 @@ def deploy_worker(deployment_id, log_id, commit_info=None):
     # 1. Fetch deployment configuration
     with connection.cursor() as cursor:
         cursor.execute("""
-            SELECT d.id, d.repo_url, d.branch, d.deploy_path, d.ssh_key, u.username, d.domain_id, d.auto_configured
+            SELECT d.id, d.repo_url, d.branch, d.deploy_path, d.ssh_key, u.username, d.domain_id, d.auto_configured, d.post_deploy_script
             FROM git_deployments d
             JOIN domain dm ON d.domain_id = dm.id
             JOIN auth_user u ON dm.userid = u.id
@@ -341,7 +420,7 @@ def deploy_worker(deployment_id, log_id, commit_info=None):
     if not row:
         return
         
-    dep_id, repo_url, branch, deploy_path, ssh_key, username, domain_id, auto_configured = row
+    dep_id, repo_url, branch, deploy_path, ssh_key, username, domain_id, auto_configured, post_deploy_script = row
     
     # Initialize state
     status = 'success'
@@ -438,47 +517,57 @@ def deploy_worker(deployment_id, log_id, commit_info=None):
             else:
                 log("Submodules updated successfully.")
 
-        # Auto-reload Node.js / PM2 applications if registered on this deployment path
+        # Execute post-deployment commands
         if status == 'success':
-            try:
-                from users.models import Apps
-                node_app = Apps.objects.filter(domain_id=domain_id, path=deploy_path, type='node_js').first()
-                if not node_app:
-                    node_app = Apps.objects.filter(path=deploy_path, type='node_js').first()
+            if post_deploy_script and post_deploy_script.strip():
+                log("Executing custom post-deployment commands inside working directory...")
+                code = run_contained_post_deploy_script(username, deploy_path, post_deploy_script, lambda msg: log(msg, with_timestamp=False), env_vars)
+                if code != 0:
+                    status = 'failed'
+                    log(f"FAILED: Custom post-deployment commands exited with status {code}")
+                else:
+                    log("SUCCESS: Custom post-deployment commands completed successfully.")
+            else:
+                # Default: Auto-reload Node.js / PM2 applications if registered on this deployment path
+                try:
+                    from users.models import Apps
+                    node_app = Apps.objects.filter(domain_id=domain_id, path=deploy_path, type='node_js').first()
+                    if not node_app:
+                        node_app = Apps.objects.filter(path=deploy_path, type='node_js').first()
 
-                if node_app:
-                    app_name = node_app.name or f"node-app-{node_app.id}"
-                    log(f"Detected Node.js application '{app_name}' registered at this deploy path.")
+                    if node_app:
+                        app_name = node_app.name or f"node-app-{node_app.id}"
+                        log(f"Detected Node.js application '{app_name}' registered at this deploy path.")
 
-                    # Run npm install if package.json exists
-                    if os.path.exists(os.path.join(deploy_path, 'package.json')):
-                        log("Running: npm install (--omit=dev)...")
-                        code = run_cmd_as_user_stream(username, ['npm', 'install', '--omit=dev'], deploy_path, lambda msg: log(msg, with_timestamp=False), env_vars)
-                        if code == 0:
-                            log("SUCCESS: Dependencies installed.")
+                        # Run npm install if package.json exists
+                        if os.path.exists(os.path.join(deploy_path, 'package.json')):
+                            log("Running: npm install (--omit=dev)...")
+                            code = run_cmd_as_user_stream(username, ['npm', 'install', '--omit=dev'], deploy_path, lambda msg: log(msg, with_timestamp=False), env_vars)
+                            if code == 0:
+                                log("SUCCESS: Dependencies installed.")
+                            else:
+                                log(f"WARNING: npm install finished with code {code}.")
+
+                        # Trigger PM2 zero-downtime reload
+                        from users.function import restart_node_app_under_pm2
+                        log(f"Triggering PM2 zero-downtime reload for '{app_name}'...")
+                        restart_res = restart_node_app_under_pm2(
+                            username=username,
+                            app_name=app_name,
+                            app_path=deploy_path,
+                            startup_file=node_app.startup_file,
+                            node_version=node_app.version,
+                            port=node_app.port,
+                            env_str=node_app.env_variables,
+                            app_mode=node_app.app_mode,
+                            max_memory=node_app.max_memory
+                        )
+                        if restart_res.get('status') == 'success':
+                            log(f"SUCCESS: Node.js application '{app_name}' reloaded successfully via PM2.")
                         else:
-                            log(f"WARNING: npm install finished with code {code}.")
-
-                    # Trigger PM2 zero-downtime reload
-                    from users.function import restart_node_app_under_pm2
-                    log(f"Triggering PM2 zero-downtime reload for '{app_name}'...")
-                    restart_res = restart_node_app_under_pm2(
-                        username=username,
-                        app_name=app_name,
-                        app_path=deploy_path,
-                        startup_file=node_app.startup_file,
-                        node_version=node_app.version,
-                        port=node_app.port,
-                        env_str=node_app.env_variables,
-                        app_mode=node_app.app_mode,
-                        max_memory=node_app.max_memory
-                    )
-                    if restart_res.get('status') == 'success':
-                        log(f"SUCCESS: Node.js application '{app_name}' reloaded successfully via PM2.")
-                    else:
-                        log(f"NOTICE: PM2 reload completed: {restart_res.get('message', 'done')}")
-            except Exception as node_err:
-                log(f"Node.js post-deploy hook notice: {str(node_err)}")
+                            log(f"NOTICE: PM2 reload completed: {restart_res.get('message', 'done')}")
+                except Exception as node_err:
+                    log(f"Node.js post-deploy hook notice: {str(node_err)}")
 
     except Exception as ex:
         status = 'failed'
@@ -524,13 +613,13 @@ def gui_view(request):
     with connection.cursor() as cursor:
         if user.is_superuser or is_admin:
             cursor.execute("""
-                SELECT gd.id, d.domain, gd.domain_id, gd.repo_url, gd.branch, gd.deploy_path, gd.webhook_secret, gd.ssh_public_key, gd.auto_configured, gd.created_at
+                SELECT gd.id, d.domain, gd.domain_id, gd.repo_url, gd.branch, gd.deploy_path, gd.webhook_secret, gd.ssh_public_key, gd.auto_configured, gd.post_deploy_script, gd.created_at
                 FROM git_deployments gd
                 JOIN domain d ON gd.domain_id = d.id
             """)
         else:
             cursor.execute("""
-                SELECT gd.id, d.domain, gd.domain_id, gd.repo_url, gd.branch, gd.deploy_path, gd.webhook_secret, gd.ssh_public_key, gd.auto_configured, gd.created_at
+                SELECT gd.id, d.domain, gd.domain_id, gd.repo_url, gd.branch, gd.deploy_path, gd.webhook_secret, gd.ssh_public_key, gd.auto_configured, gd.post_deploy_script, gd.created_at
                 FROM git_deployments gd
                 JOIN domain d ON gd.domain_id = d.id
                 WHERE gd.userid_id = %s
@@ -545,6 +634,7 @@ def gui_view(request):
         path = os.path.normpath(dep['deploy_path'] or '')
         dep['base_path'] = base
         dep['deploy_subdir'] = path[len(base) + 1:] if base and path.startswith(base + os.sep) else ''
+        dep['post_deploy_script'] = dep.get('post_deploy_script') or ''
 
     # Fetch last status log for each deployment
     for dep in deployments:
@@ -624,6 +714,7 @@ def create_deployment_view(request):
     repo_url = request.POST.get('repo_url', '').strip()
     branch = request.POST.get('branch', 'main').strip() or 'main'
     deploy_path = request.POST.get('deploy_path', '').strip()
+    post_deploy_script = request.POST.get('post_deploy_script', '').strip()
     auto_configure = request.POST.get('auto_configure') == 'true' or request.POST.get('auto_configure') == 'on'
     
     # Auto-detect repository type based on URL format
@@ -755,9 +846,9 @@ def create_deployment_view(request):
     # Save details to MySQL
     with connection.cursor() as cursor:
         cursor.execute("""
-            INSERT INTO git_deployments (userid_id, domain_id, repo_url, branch, deploy_path, webhook_secret, ssh_key, ssh_public_key, auto_configured, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, [owner_id, domain.id, repo_url, branch, final_deploy_path, webhook_secret, ssh_key, ssh_public_key, 1 if auto_configure else 0, datetime.now()])
+            INSERT INTO git_deployments (userid_id, domain_id, repo_url, branch, deploy_path, webhook_secret, ssh_key, ssh_public_key, auto_configured, post_deploy_script, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, [owner_id, domain.id, repo_url, branch, final_deploy_path, webhook_secret, ssh_key, ssh_public_key, 1 if auto_configure else 0, post_deploy_script, datetime.now()])
 
     return JsonResponse({"status": "success", "message": "Deployment registered successfully"})
 
@@ -971,6 +1062,7 @@ def update_deployment_view(request, dep_id):
     branch = request.POST.get('branch', 'main').strip() or 'main'
     deploy_path = request.POST.get('deploy_path', '').strip()
     deploy_subdir = request.POST.get('deploy_subdir', '')
+    post_deploy_script = request.POST.get('post_deploy_script', '').strip()
 
     with connection.cursor() as cursor:
         if user.is_superuser or is_admin:
@@ -990,9 +1082,9 @@ def update_deployment_view(request, dep_id):
     with connection.cursor() as cursor:
         cursor.execute("""
             UPDATE git_deployments
-            SET branch = %s, deploy_path = %s
+            SET branch = %s, deploy_path = %s, post_deploy_script = %s
             WHERE id = %s
-        """, [branch, clean_path, dep_id])
+        """, [branch, clean_path, post_deploy_script, dep_id])
         
     return JsonResponse({"status": "success", "message": "Deployment configuration updated successfully"})
 
