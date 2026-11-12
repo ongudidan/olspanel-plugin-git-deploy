@@ -346,10 +346,16 @@ def run_contained_post_deploy_script(username, deploy_path, script_content, log_
     2. Enforces cwd = deploy_path.
     3. Traps / overrides cd to prevent escaping outside deploy_path.
     4. Injects Node, PM2, Composer, PHP paths into PATH.
-    5. Streams stdout and stderr line-by-line.
-    6. Stops on first failure (set -eo pipefail).
+    5. Normalizes CRLF / CR newlines from browser textareas to POSIX LF.
+    6. Streams stdout and stderr line-by-line.
+    7. Stops on first failure (set -eo pipefail).
     """
     if not script_content or not script_content.strip():
+        return 0
+
+    # Normalize Windows/HTML textarea CRLF line endings to Linux LF
+    clean_script = script_content.replace('\r\n', '\n').replace('\r', '\n').strip()
+    if not clean_script:
         return 0
 
     clean_deploy_path = os.path.normpath(deploy_path)
@@ -393,7 +399,7 @@ cd() {{
 }}
 
 # User-defined commands follow:
-{script_content.strip()}
+{clean_script}
 """
 
     # Write temporary runner script owned and executable by the user
@@ -767,7 +773,7 @@ def create_deployment_view(request):
     repo_url = request.POST.get('repo_url', '').strip()
     branch = request.POST.get('branch', 'main').strip() or 'main'
     deploy_path = request.POST.get('deploy_path', '').strip()
-    post_deploy_script = request.POST.get('post_deploy_script', '').strip()
+    post_deploy_script = request.POST.get('post_deploy_script', '').replace('\r\n', '\n').replace('\r', '\n').strip()
     auto_configure = request.POST.get('auto_configure') == 'true' or request.POST.get('auto_configure') == 'on'
     
     # Auto-detect repository type based on URL format
@@ -1114,7 +1120,7 @@ def update_deployment_view(request, dep_id):
     branch = request.POST.get('branch', 'main').strip() or 'main'
     deploy_path = request.POST.get('deploy_path', '').strip()
     deploy_subdir = request.POST.get('deploy_subdir', '')
-    post_deploy_script = request.POST.get('post_deploy_script', '').strip()
+    post_deploy_script = request.POST.get('post_deploy_script', '').replace('\r\n', '\n').replace('\r', '\n').strip()
 
     with connection.cursor() as cursor:
         if user.is_superuser or is_admin:
